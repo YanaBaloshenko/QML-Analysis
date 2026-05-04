@@ -1,0 +1,4 @@
+qiskit
+qiskit-machine-learning
+iqm-client[qiskit]>=34.0.2
+matplotlib
