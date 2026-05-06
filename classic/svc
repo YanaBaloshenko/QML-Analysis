@@ -1,0 +1,15 @@
+import numpy as np
+import time
+from matplotlib import pyplot as plt
+
+data = np.load("data/kdd_3.14-scale_10-f.npz")
+train_features = data['train_features']
+test_features = data['test_features']
+train_labels = data['train_labels']
+test_labels = data['test_labels']
+n_features = train_features.shape[1] 
+print(f"Number of features: {n_features}")
+print(f"Number of train records: {train_features.shape[0]}")
+print(f"Number of test records: {test_features.shape[0]}")
+
+
