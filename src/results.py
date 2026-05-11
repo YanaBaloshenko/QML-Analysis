@@ -19,12 +19,16 @@ def vqc_report(folder):
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
-    num_rec = data["num_rec"]
-    train_features = sets['train_features'][:num_rec]
-    train_labels = sets['train_labels'][:num_rec]
-    test_features = sets['test_features'][:num_rec]
-    test_labels = sets['test_labels'][:num_rec]
+    
+    train_features = sets['train_features']
+    train_labels = sets['train_labels']
+    test_features = sets['test_features']
+    test_labels = sets['test_labels']
 
+    num_rec = data["num_rec"]
+    if num_rec is not None:
+        train_features, train_labels, test_features, test_labels = train_features[:num_rec], train_labels[:num_rec], test_features[:num_rec], test_labels[:num_rec]
+    
     predictions = data["predictions"]
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 

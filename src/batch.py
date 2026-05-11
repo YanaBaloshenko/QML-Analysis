@@ -20,7 +20,9 @@ def batch_results(folder):
     num_rec = data["num_rec"]
     bcknd = data["bcknd"]
 
-    test_features = sets['test_features'][:num_rec]
+    test_features = sets['test_features']
+    if num_rec is not None:
+        test_features = sets['test_features'][:num_rec]
     
     with open(f"{folder}/base_circuit.qpy", "rb") as f:
         compiled_base_circuit = qpy.load(f)[0]
@@ -81,7 +83,7 @@ def batch_results(folder):
         filtered_dist = {state: prob for state, prob in dist.items() if prob > threshold}
         noise_mass = 1.0 - sum(filtered_dist.values())
         noise_text = f"Filtered Hardware Noise: {noise_mass:.1%}"
-        
+
         plot_distribution(dist, title="Quasi-probability", legend=[noise_text]).savefig(f"{folder}/plots/{filename}_distribution.png", dpi=300)
     else:
         print("Skipping plot because QPU results could not be retrieved.")
