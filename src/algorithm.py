@@ -54,7 +54,7 @@ def backend_def(bcknd):
         backend=IQMFakeGarnet()
         sampler = BackendSamplerV2(backend=backend) # 20 qubits
     elif bcknd == "sirius" or bcknd == "garnet" or bcknd == "emerald":
-        backend=IQMProvider(iqm_link, bcknd, token).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
+        backend = IQMProvider(iqm_link, quantum_computer=bcknd).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
         sampler = BackendSamplerV2(backend=backend)
         sampler.options.default_shots = 1024
         sampler.options.resilience_level = 1 # resilience_level (int) – level of error mitigation to apply, valid values are 0 (no error mitigation), 1 (basic readout error mitigation), and 2 (advanced error mitigation using quasi-probability method)

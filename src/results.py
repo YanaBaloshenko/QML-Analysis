@@ -19,25 +19,41 @@ def vqc_report(folder):
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
-    train_features = sets['train_features']
-    train_labels = sets['train_labels']
-    test_features = sets['test_features']
-    test_labels = sets['test_labels']
+    num_rec = data["num_rec"]
+    train_features = sets['train_features'][:num_rec]
+    train_labels = sets['train_labels'][:num_rec]
+    test_features = sets['test_features'][:num_rec]
+    test_labels = sets['test_labels'][:num_rec]
 
-    num_preds = len(data["predictions"])
-    test_features = test_features[:num_preds]
-    test_labels = test_labels[:num_preds]
-
+    predictions = data["predictions"]
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
-    # report calculations
-    # calculating scores
     sampler = StatevectorSampler()
     ml.neural_network.sampler = sampler
     ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
-    test_score = accuracy_score(test_labels, data["predictions"])
-    train_score = ml.score(train_features, train_labels)
 
+    # report calculations
+    if not predictions or "ERROR_RETRIEVING_RESULTS" in predictions:
+        train_score = 0.0
+        test_score = 0.0
+        report = "N/A: All QPU inference jobs failed or returned errors."
+        cm_text = "N/A: No valid data to display."
+        print("No valid predictions found. Skipping metrics calculation.")
+    else:
+        # calculating scores
+        test_score = accuracy_score(test_labels, data["predictions"])
+        train_score = ml.score(train_features, train_labels)
+
+        # calculating cm and scikit report
+        report = classification_report(test_labels, data["predictions"], target_names=["Normal (0)", "Attack (1)"])
+        cm = confusion_matrix(test_labels, data["predictions"])
+        tn, fp, fn, tp = cm.ravel()
+        cm_text = f"""
+                  Predicted Normal| Predicted Attack
+Actual Normal (0): {tn:^16} | {fp:^16}
+Actual Attack (1): {fn:^16} | {tp:^16}
+"""
+    
     # calculating feature importance
     sample_fi = test_features[0].reshape(1, -1)
     _ = ml.neural_network.forward(sample_fi, ml.weights)
@@ -56,19 +72,9 @@ def vqc_report(folder):
             float_format=lambda x: f"{x:.6f}"  # Rounds the importance to 6 decimal places
         )
 
-    # calculating cm and scikit report
-    report = classification_report(test_labels, data["predictions"], target_names=["Normal (0)", "Attack (1)"])
-    cm = confusion_matrix(test_labels, data["predictions"])
-    tn, fp, fn, tp = cm.ravel()
-    cm_text = f"""
-                  Predicted Normal| Predicted Attack
-Actual Normal (0): {tn:^16} | {fp:^16}
-Actual Attack (1): {fn:^16} | {tp:^16}
-"""
-
     # saving report
     with open(f"{folder}/{filename}_report.txt", "w") as f:
-        f.write(f"Model {type(ml).__name__} | Job Id {data["job_id"]}\n")
+        f.write(f"Model {type(ml).__name__} | Job Id {data.get('job_id', 'N/A')}\n")
         f.write("\n--- Dataset info ---\n")
         f.write(f"Data file used: {d_file}\n")
         f.write(f"Number of features: {data["n_features"]}\n")
@@ -76,7 +82,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
 
         f.write("\n--- Training info ---\n")
         f.write(f"Number of classes: {data["num_classes"]}\n")
-        f.write(f"Training time: {data["train_time"]} s\n")
+        f.write(f"Training time: {data.get('train_time', 'N/A')} s\n")
         f.write(f"Score on the training dataset: {train_score:.2f}\n")
         f.write(f"Score on the test dataset: {test_score:.2f}\n")
         
@@ -123,7 +129,7 @@ def vqr_report(folder):
 
 
 def main():
-    folder = "results/11052026_1125"
+    folder = "results/11052026_1149"
     vqc_report(folder)
 
 if __name__ == "__main__":
