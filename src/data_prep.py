@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 import datetime
 
 from sklearn.preprocessing import MinMaxScaler
@@ -9,8 +10,10 @@ from sklearn.model_selection import train_test_split
 
 def prepare_data():
     range = np.pi # for normalization
-    n_features = 5 # for pca
-    filename = f"dataset/kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc"
+    n_features = 2 # for pca
+    folder = f"dataset/kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc"
+    os.makedirs(folder, exist_ok=True)
+    filename = f"{folder}/kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc"
 
     print("Reading files...")
     df_train = pd.read_csv("dataset/nsl-kdd/KDDTrain+.txt") # reading files

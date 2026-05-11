@@ -18,13 +18,17 @@ def vqc_report(folder):
     ml = VQC.from_dill(f"{folder}/{filename}.model")
 
     d_file = data["d_file"]
-    sets = np.load(f"dataset/{d_file}.npz")
+    sets = np.load(f"dataset/{d_file}/{d_file}.npz")
     train_features = sets['train_features']
     train_labels = sets['train_labels']
     test_features = sets['test_features']
     test_labels = sets['test_labels']
 
-    pca_weights = np.load(f"dataset/{d_file}_pcaweights.npy")
+    num_preds = len(data["predictions"])
+    test_features = test_features[:num_preds]
+    test_labels = test_labels[:num_preds]
+
+    pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
     # report calculations
     # calculating scores
@@ -40,7 +44,7 @@ def vqc_report(folder):
     ml.neural_network.input_gradients = True
     in_grads, weight_grads = ml.neural_network.backward(sample_fi, ml.weights)
     
-    encoded_names = np.load(f"dataset/{d_file}_names.npy", allow_pickle=True).tolist()
+    encoded_names = np.load(f"dataset/{d_file}/{d_file}_names.npy", allow_pickle=True).tolist()
     fi_df = pd.DataFrame({
         'Original Feature': encoded_names,
         'Importance': np.abs(np.dot(in_grads[0][0], pca_weights).flatten())
@@ -57,8 +61,7 @@ def vqc_report(folder):
     cm = confusion_matrix(test_labels, data["predictions"])
     tn, fp, fn, tp = cm.ravel()
     cm_text = f"""
-                  Predicted | Predicted
-                  Normal      Attack
+                  Predicted Normal| Predicted Attack
 Actual Normal (0): {tn:^16} | {fp:^16}
 Actual Attack (1): {fn:^16} | {tp:^16}
 """
@@ -120,7 +123,7 @@ def vqr_report(folder):
 
 
 def main():
-    folder = "results/11052026_0949"
+    folder = "results/11052026_1125"
     vqc_report(folder)
 
 if __name__ == "__main__":

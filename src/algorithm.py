@@ -1,3 +1,5 @@
+import numpy as np
+
 from iqm import qiskit_iqm
 from iqm.qiskit_iqm.fake_backends.fake_garnet import IQMFakeGarnet
 from qiskit.primitives import BackendSamplerV2
@@ -19,12 +21,30 @@ load_dotenv()
 token = os.getenv("IQM_TOKEN")
 iqm_link = "https://resonance.iqm.tech/"
 
-spsa = SPSA(maxiter=2)#, learning_rate=0.1, perturbation=0.2) # SPSA doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
+spsa = SPSA(maxiter=5)#, learning_rate=0.1, perturbation=0.2) # SPSA doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
 
 objective_func_vals = []
-def vqc_callback(n_evals, parameters, value, stepsize, accepted):
-    objective_func_vals.append(value)
-    print(f"Iteration: {len(objective_func_vals)} | Objective function value: {value:.4f}")
+def get_vqc_callback(folder, file_name):
+    def callback(*args):
+        if len(args) == 5: # SPSA signature: (nfev, weights, value, stepsize, accepted)
+            weights = args[1]
+            value = args[2]
+        else: # default VQC signature: (weights, value)
+            weights = args[0]
+            value = args[1]
+
+        objective_func_vals.append(value)
+        iteration = len(objective_func_vals)
+        print(f"Iteration: {iteration} | Objective function value: {value:.4f}")
+
+        latest_path = (f"{folder}/checkpoints/{file_name}_latest_checkpoint.npy") # always save the absolute latest state (overwrites the previous one)
+        np.save(latest_path, weights)
+        
+        if iteration % 5 == 0:  # save a permanent history file every 5 iterations (if QPU gets very noisy and ruins weights late in the run)
+            history_path = (f"{folder}/checkpoints/{file_name}_checkpoint_iter_{iteration}.npy")
+            np.save(history_path, weights)
+            
+    return callback
 
 def backend_def(bcknd):
     if bcknd == "ideal":
@@ -37,16 +57,19 @@ def backend_def(bcknd):
         backend=IQMProvider(iqm_link, bcknd, token).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
         sampler = BackendSamplerV2(backend=backend)
         sampler.options.default_shots = 1024
-        sampler.options.resilience_level = 1
+        sampler.options.resilience_level = 1 # resilience_level (int) – level of error mitigation to apply, valid values are 0 (no error mitigation), 1 (basic readout error mitigation), and 2 (advanced error mitigation using quasi-probability method)
     else:
         raise ValueError(f"Couldn't find backend: {bcknd}")
     return sampler, backend
 
-def vqc_def(n_features, bcknd, folder, file_name):
+def vqc_def(n_features, bcknd, initial_point, folder, file_name):
     os.makedirs(folder, exist_ok=True)
+    os.makedirs(f"{folder}/plots", exist_ok=True)
+    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
+
     sampler, backend = backend_def(bcknd)
-    feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
-    ansatz = real_amplitudes(num_qubits=n_features, reps=1)
+    feature_map = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear') # feature map doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.ZZFeatureMap.html
+    ansatz = real_amplitudes(num_qubits=n_features, reps=1, entanglement='linear') # ansatz doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.RealAmplitudes.html
     if hasattr(backend, 'target'):
         pm = generate_preset_pass_manager(optimization_level=3, target=backend.target) # transpilators docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/transpiler
     else:
@@ -75,16 +98,23 @@ def vqc_def(n_features, bcknd, folder, file_name):
     # optimization_method – plugin name for the optimization stage of the output
     # qubits_initially_zero – (bool) indicates whether the input circuit is zero-initialized
 
+    if bcknd == "ideal":
+        optimizer = SPSA(maxiter=40)
+    else:
+        optimizer = spsa
+
+    custom_callback = get_vqc_callback(folder, file_name)
+
     print("Defining algorithm (VQC)...")
     vqc = VQC(
         # num_qubits (also defined by feature map and ansatz)
         feature_map=feature_map,
         ansatz=ansatz,
         # loss (default - cross_entropy) - target loss function to be used in training
-        optimizer=spsa,
-        # warm_start (bool) - use weights from previous fit to start next fit
-        # initial_point - for the optimizer to start from
-        callback=vqc_callback,
+        optimizer=optimizer,
+        #warm_start=True, # use weights from previous fit to start next fit
+        initial_point=initial_point,
+        callback=custom_callback,
         sampler=sampler,
         pass_manager=pm
         # interpret - callable that maps measured integer to another unsigned integer or tuple of unsigned integers (used as new indices for the (potentially sparse) output array, basic parity function used if None passed)
@@ -114,4 +144,4 @@ def vqr_def(n_features, bcknd):
         #pass_manager (BasePassManager | None)
     )
 
-    return vqr, pm, sampler, backend, objective_func_vals
+    # return vqr, pm, sampler, backend, objective_func_vals

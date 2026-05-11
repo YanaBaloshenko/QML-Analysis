@@ -14,26 +14,39 @@ import results as results
 def main():
     # preparing files
     ml_type = "vqc"
+    pre_bcknd = "ideal"
     bcknd = "ideal"
-    d_file = "kdd_3.14-scale_5-fpca_onehot-enc"
+    d_file = "kdd_3.14-scale_2-fpca_onehot-enc"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
     folder = f"results/{date}"
     os.makedirs(folder, exist_ok=True)
     os.makedirs(f"{folder}/plots", exist_ok=True)
+    os.makedirs(f"{folder}/pretraining", exist_ok=True)
+    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
     filename = f"{ml_type}_data-{d_file}_backend-{bcknd}_time-{date}"
 
     ################## data read ##################
-    data = np.load(f"dataset/{d_file}.npz")
+    data = np.load(f"dataset/{d_file}/{d_file}.npz")
     train_features = data['train_features']
     test_features = data['test_features']
     train_labels = data['train_labels']
     test_labels = data['test_labels']
     n_features = train_features.shape[1]
-    train_features, train_labels = train_features[:40], train_labels[:40] # for faster testing, comment out for full dataset
+    train_features, train_labels = train_features[:4], train_labels[:4] # for faster testing, comment out for full dataset
+    test_features, test_labels = test_features[:4], test_labels[:4]
 
     ################## training ##################
-    if ml_type=="vqc": 
-        ml, pm, sampler, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, folder, filename)
+    if ml_type=="vqc":
+        # pre-training for better initial point
+        pre_ml, _, _, _, _ = algorithm.vqc_def(n_features, pre_bcknd, None, f"{folder}/pretraining", f"pre_{filename}")
+        print("Starting pre-training...")
+        pre_ml.fit(train_features, train_labels) # Let SPSA find a good local minimum
+        pretrained_weights = pre_ml.weights
+        np.save(f"{folder}/pretraining/pretrained_weights.npy", pretrained_weights)
+        algorithm.objective_func_vals.clear() # clearing objective function values from pre-training
+        
+        ml, pm, sampler, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename) # qpu ml definition with initial point from pre-training
+
     elif ml_type=="vqr":
         ml, pm, sampler, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd)
     else:
@@ -57,7 +70,7 @@ def main():
     test_circuits = []
     for feature in test_features:
         state_circuit = compiled_base_circuit.assign_parameters({**dict(zip(ml.neural_network.input_params, feature)), **dict(zip(ml.neural_network.weight_params, ml.weights))})
-        test_circuits.append(state_circuit.measure_all(inplace=False))
+        test_circuits.append(state_circuit)
 
     print("Geting data...")
     job = sampler.run(test_circuits)
@@ -86,10 +99,9 @@ def main():
     dist = {state: count / total_shots for state, count in bitstrings.items()}
 
     # saving plots
-    pm_circuit = pm.run(ml.circuit)
-    pm_circuit.draw(output='mpl', idle_wires=False).savefig(f"{folder}/plots/{filename}_transpiled-circuit_.png", dpi=300)
+    compiled_base_circuit.draw(output='mpl', idle_wires=False).savefig(f"{folder}/plots/{filename}_transpiled-circuit_.png", dpi=300)
     if backend is not None:
-        plot_circuit_layout(pm_circuit, backend).savefig(f"{folder}/plots/{filename}_hardware-layout.png", dpi=300)
+        plot_circuit_layout(compiled_base_circuit, backend).savefig(f"{folder}/plots/{filename}_hardware-layout.png", dpi=300)
     else:
         print("No hardware backend, skipping layout plot...")
     plot_histogram(bitstrings, title="Measurements - Histogram").savefig(f"{folder}/plots/{filename}_histogram.png", dpi=300)
@@ -135,7 +147,7 @@ def main():
             "num_shots": num_shots,
             "predictions": predictions,
             "filename": filename,
-            "job_id": job_id
+            "job_id": str(job_id)
         }, f, indent=4)
 
 if __name__ == "__main__":
