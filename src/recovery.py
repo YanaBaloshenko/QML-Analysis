@@ -15,9 +15,15 @@ def recover_job(folder, target_id):
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
     num_rec = data["num_rec"]
-    bcknd = data["bcknd"]
+    if "test_bcknd" in data:
+        bcknd = data["test_bcknd"]
+    else:
+        bcknd = data["bcknd"]
 
-    test_features = sets['test_features'][:num_rec]
+    test_features = sets['test_features']
+    if num_rec is not None:
+        test_features = test_features[:num_rec]
+        
     _, backend = algorithm.backend_def(bcknd)
 
     # retrieve the job
@@ -58,8 +64,8 @@ def recover_job(folder, target_id):
     print("Plot generated. Recovery complete.")
 
 def main():
-    folder = "results/11052026_1149"
-    id = "019e1675-7fc3-7321-b3b0-b8f319287379"
+    folder = "results/11052026_2134"
+    id = "019e18a9-3ab6-73d2-9abe-f93e6b7397ab"
     recover_job(folder, id)
 
 if __name__ == "__main__":

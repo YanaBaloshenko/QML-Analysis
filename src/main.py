@@ -77,8 +77,8 @@ def main():
 
     print("Preparing base circuit...")
     base_circuit = ml.circuit
-    base_circuit_meas = base_circuit.measure_all(inplace=False)
-    compiled_base_circuit = pm.run(base_circuit_meas)
+    #base_circuit_meas = base_circuit.measure_all(inplace=False)
+    compiled_base_circuit = pm.run(base_circuit)
     with open(f"{folder}/base-circuit.qpy", "wb") as f:
         qpy.dump(compiled_base_circuit, f)
 

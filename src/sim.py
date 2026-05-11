@@ -19,6 +19,7 @@ def main():
     # preparing files
     ml_type = "vqc"
     bcknd = "ideal"
+    test_bcknd = "sirius"
     d_file = "kdd_3.14-scale_2-fpca_onehot-enc"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
     #date = "11052026_1149"
@@ -66,8 +67,7 @@ def main():
 
     print("Preparing base circuit...")
     base_circuit = ml.circuit
-    base_circuit_meas = base_circuit.measure_all(inplace=False)
-    compiled_base_circuit = pm.run(base_circuit_meas)
+    compiled_base_circuit = pm.run(base_circuit)
     with open(f"{folder}/base-circuit.qpy", "wb") as f:
         qpy.dump(compiled_base_circuit, f)
 
@@ -96,7 +96,8 @@ def main():
             "num_shots": num_shots,
             "filename": filename,
             "num_rec": num_rec,"bcknd": bcknd,
-            "objective_func_vals": objective_func_vals
+            "objective_func_vals": objective_func_vals,
+            "test_bcknd": test_bcknd
         }, f, indent=4)
 
     print("Generating plots...")

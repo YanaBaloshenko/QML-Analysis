@@ -19,7 +19,7 @@ def vqc_report(folder):
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
-    
+
     train_features = sets['train_features']
     train_labels = sets['train_labels']
     test_features = sets['test_features']
@@ -127,13 +127,11 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         else:
             f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
 
-
 def vqr_report(folder):
     folder
 
-
 def main():
-    folder = "results/11052026_1149"
+    folder = "results/11052026_2134"
     vqc_report(folder)
 
 if __name__ == "__main__":
