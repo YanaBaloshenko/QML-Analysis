@@ -49,7 +49,7 @@ def vqc_report(folder):
         train_score = ml.score(train_features, train_labels)
 
         # calculating cm and scikit report
-        report = classification_report(test_labels, data["predictions"], target_names=["Normal (0)", "Attack (1)"])
+        report = classification_report(test_labels, data["predictions"], target_names=["Normal (0)", "Attack (1)"], zero_division=0.0)
         cm = confusion_matrix(test_labels, data["predictions"])
         tn, fp, fn, tp = cm.ravel()
         cm_text = f"""

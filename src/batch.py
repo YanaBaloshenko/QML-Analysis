@@ -106,7 +106,7 @@ def batch_results(folder):
     noise_text = f"Filtered Hardware Noise: {noise_mass:.1%}"
 
     plot_distribution(filtered_dist, title="Quasi-probability", legend=[noise_text]).savefig(f"{folder}/plots/{filename}_distribution.png", dpi=300)
-    print("Plot generated. Recovery complete.")
+    print("Plot generated.")
 
 def main():
     folder = 'results/11052026_2134'

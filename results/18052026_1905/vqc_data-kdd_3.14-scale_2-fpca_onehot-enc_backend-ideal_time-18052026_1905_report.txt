@@ -1,0 +1,149 @@
+Model VQC | Job Id 545273a2-7f50-4c40-9c6e-1b3ac0541e65
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_2-fpca_onehot-enc
+Number of features: 2
+Number of records: train - 4, test - 4
+
+--- Training info ---
+Number of classes: 2
+Training time: 1.9214801788330078 s
+Score on the training dataset: 1.00
+Score on the test dataset: 0.25
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        1         |        0        
+Actual Attack (1):        3         |        0        
+
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.25      1.00      0.40         1
+  Attack (1)       0.00      0.00      0.00         3
+
+    accuracy                           0.25         4
+   macro avg       0.12      0.50      0.20         4
+weighted avg       0.06      0.25      0.10         4
+
+
+--- Feature Importance ---
+Original Feature             Importance
+                  logged_in 0.194353   
+               service_http 0.172443   
+     dst_host_same_srv_rate 0.169165   
+         dst_host_srv_count 0.165588   
+                    flag_SF 0.162735   
+              same_srv_rate 0.127846   
+            srv_rerror_rate 0.120195   
+                rerror_rate 0.118511   
+   dst_host_srv_rerror_rate 0.114896   
+       dst_host_rerror_rate 0.109274   
+            service_private 0.102812   
+                   flag_REJ 0.093297   
+             dst_host_count 0.074733   
+     dst_host_diff_srv_rate 0.047543   
+                      count 0.045060   
+       dst_host_serror_rate 0.044166   
+                serror_rate 0.042758   
+   dst_host_srv_serror_rate 0.042331   
+            srv_serror_rate 0.041543   
+                    flag_S0 0.040051   
+          protocol_type_tcp 0.029577   
+              diff_srv_rate 0.026091   
+          protocol_type_udp 0.025337   
+dst_host_same_src_port_rate 0.019316   
+         srv_diff_host_rate 0.017804   
+              service_other 0.017485   
+                  flag_RSTO 0.016539   
+               service_auth 0.012900   
+               service_smtp 0.012898   
+                  dst_bytes 0.012332   
+                   duration 0.011267   
+                  flag_RSTR 0.010452   
+              service_whois 0.010380   
+                service_ssh 0.009457   
+dst_host_srv_diff_host_rate 0.007130   
+             service_telnet 0.006554   
+         protocol_type_icmp 0.004239   
+           service_domain_u 0.004097   
+              service_ecr_i 0.003272   
+              service_ntp_u 0.003142   
+             wrong_fragment 0.003015   
+              service_imap4 0.002832   
+           service_ftp_data 0.002605   
+                    flag_SH 0.002395   
+               service_name 0.001711   
+                service_ctf 0.001661   
+            num_compromised 0.001563   
+                 root_shell 0.001563   
+               service_uucp 0.001523   
+                  srv_count 0.001496   
+                  src_bytes 0.001180   
+              service_eco_i 0.000967   
+               service_exec 0.000954   
+             service_sunrpc 0.000935   
+        service_netbios_ssn 0.000925   
+            service_courier 0.000924   
+               service_ldap 0.000875   
+                service_bgp 0.000845   
+        service_netbios_dgm 0.000842   
+                service_mtp 0.000797   
+                service_efs 0.000748   
+          service_uucp_path 0.000661   
+              service_vmnet 0.000648   
+                        hot 0.000365   
+         num_file_creations 0.000172   
+                       land 0.000000   
+          num_failed_logins 0.000000   
+                   num_root 0.000000   
+           num_access_files 0.000000   
+          num_outbound_cmds 0.000000   
+              is_host_login 0.000000   
+                 num_shells 0.000000   
+               su_attempted 0.000000   
+                     urgent 0.000000   
+             is_guest_login 0.000000   
+              service_pop_3 0.000000   
+                service_ftp 0.000000   
+             service_finger 0.000000   
+                    flag_S3 0.000000   
+
+--- Model parameters ---
+Number of qubits: 2
+Number of iterations: 40
+Number of Function Evaluations: 120
+Loss function type: CrossEntropyLoss
+Loss function value: 0.3923675033386736
+Initial point (starting weights): [2.6194751880884115, 0.05998237419117869, 1.4343319473845917, -1.1480524296492056]
+Weights: [-0.3211482783203892, -6.01672586605767, 4.697221154117258, -7.24051648287932]
+Final Gradient Magnitude: 0
+Number of Jacobian Evaluations: 0
+
+--- Neural network ---
+Features sent to NN: 2
+Number of weights (dimensionality): 4
+Final probability shape: 2
+
+--- Optimizer (SPSA) settings ---
+maxiter: 40
+learning_rate: None
+perturbation: None
+trust_region: False
+blocking: False
+allowed_increase: None
+resamplings: 1
+perturbation_dims: None
+second_order: False
+hessian_delay: 0
+regularization: 0.01
+lse_solver: None
+initial_hessian: None
+callback: <function get_vqc_callback.<locals>.callback at 0x0000025DD6433240>
+termination_checker: None
+
+--- Sampler info ---
+Default shots: None
+Total computational cost: Exact statevector calculation (120 circuit evaluations)
