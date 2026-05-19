@@ -21,7 +21,7 @@ load_dotenv()
 token = os.getenv("IQM_TOKEN")
 iqm_link = "https://resonance.iqm.tech/"
 
-spsa = SPSA(maxiter=5)#, learning_rate=0.1, perturbation=0.2) # SPSA doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
+spsa = SPSA(maxiter=3, learning_rate=0.02, perturbation=0.05) # SPSA doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
 
 objective_func_vals = []
 def get_vqc_callback(folder, file_name):

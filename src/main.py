@@ -43,6 +43,10 @@ def main():
 
     ################## training ##################
     if ml_type=="vqc":
+        #if pre_bcknd != None:
+           # a =1
+        #else:
+            #pretrained_weights = None
         # pre-training for better initial point
         pre_ml, _, _, _, _ = algorithm.vqc_def(n_features, pre_bcknd, None, f"{folder}/pretraining", f"pre_{filename}")
         print("Starting pre-training...")
