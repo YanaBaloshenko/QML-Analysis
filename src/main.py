@@ -101,7 +101,7 @@ def vqc_training(bcknd, pretrained_weights, train_features, train_labels, n_feat
     results_save("vqc", ml, backend, sampler, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
 
 def main():
-    # preparing files
+    # preparing files and vars
     ml_type = "vqc"
     pre_bcknd = "ideal"
     bcknd = "ideal"
@@ -139,8 +139,8 @@ def main():
             pretrained_weights = None
         print("Starting training...")
         vqc_training(pre_bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
-    elif ml_type=="vqr":
-        ml, pm, sampler, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd)
+    #elif ml_type=="vqr":
+        #ml, pm, sampler, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd)
     else:
         raise ValueError("No such model defined.")    
     
