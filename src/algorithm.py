@@ -181,3 +181,9 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
     vqr.circuit.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_complete-circuit.png", dpi=300, bbox_inches='tight')
 
     return vqr, pm, estimator, backend, objective_func_vals
+
+def qsvc_def():
+    return 1
+
+def qsvr_def():
+    return 1

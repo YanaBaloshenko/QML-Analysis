@@ -15,15 +15,18 @@ import algorithm
 import results
 import batch
 
-def results_save(ml_type, ml, backend, sampler, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit):
+def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit):
+    num_shots = None
     if bcknd != "ideal":
-        num_shots = sampler.options.default_shots
-    else:
-        num_shots = None
+        if ml_type == "vqc":
+            num_shots = primitive.options.default_shots
+        elif ml_type == "vqr":
+            num_shots = f"Precision: {primitive.options.default_precision}" # vqr has precision instead of num_shots and measures till it achieves it
 
     print("\nSaving data...")
     with open(f"{folder}/metadata.json", "w") as f:
         json.dump({
+            "ml_type": ml_type,
             "train_time": train_time,
             "n_features": n_features,
             "nit": int(ml.fit_result.nit),
@@ -71,13 +74,17 @@ def results_save(ml_type, ml, backend, sampler, bcknd, objective_func_vals, fold
 
     plt.close('all') # RAM cleaning
 
-    if bcknd == "ideal":
-        batch.batch_results(folder)
-        if ml_type == "vqc":
-            results.vqc_report(folder)
+    #if bcknd == "ideal":
+        #batch.batch_results(folder)
+        #if ml_type == "vqc":
+            #results.vqc_report(folder)
 
-def vqc_training(bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, pre_t):
-    ml, pm, sampler, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
+def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, pre_t):
+    if ml_type=="vqc":
+        ml, pm, primitive, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
+    elif ml_type=="vqr":
+        ml, pm, primitive, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd, pretrained_weights, folder, filename)
+    
     start = time.time()
     ml.fit(train_features, train_labels)
     train_time = time.time() - start
@@ -85,20 +92,18 @@ def vqc_training(bcknd, pretrained_weights, train_features, train_labels, n_feat
     ################## results ##################
     print("\nSaving model...")
     ml.to_dill(f"{folder}/{filename}.model")
-    #ml = VQC.from_dill(f"{folder}/{filename}.model")
 
-    if pre_t == True:
+    if pre_t==True:
         pretrained_weights = ml.weights
         np.save(f"{folder}/pretrained_weights.npy", pretrained_weights)
 
     print("Preparing base circuit...")
-    base_circuit = ml.circuit
-    #base_circuit_meas = base_circuit.measure_all(inplace=False)
+    base_circuit = ml.neural_network.circuit
     compiled_base_circuit = pm.run(base_circuit)
     with open(f"{folder}/base-circuit.qpy", "wb") as f:
         qpy.dump(compiled_base_circuit, f)
 
-    results_save("vqc", ml, backend, sampler, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
+    results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
 
 def main():
     # preparing files and vars
@@ -129,18 +134,21 @@ def main():
     test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
 
     ################## training and saving results ##################
-    if ml_type == "vqc":
+    if ml_type=="vqc" or ml_type=="vqr":
         if pre_bcknd is not None:
             print("Starting pre-training...")
-            vqc_training(pre_bcknd, None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
+            training(ml_type, pre_bcknd, None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
             algorithm.objective_func_vals.clear() # clearing objective function values from pre-training
             pretrained_weights = np.load(f"{pre_folder}/pretrained_weights.npy")
         else:
             pretrained_weights = None
         print("Starting training...")
-        vqc_training(pre_bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
-    #elif ml_type=="vqr":
-        #ml, pm, sampler, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd)
+        training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
+
+    elif ml_type=="qsvc":
+        a = algorithm.qsvc_def()
+    elif ml_type=="qsvr":
+        a = algorithm.qsvr_def()
     else:
         raise ValueError("No such model defined.")    
     

@@ -3,6 +3,7 @@ import json
 import time
 
 from qiskit_machine_learning.algorithms.classifiers import VQC
+from qiskit_machine_learning.algorithms import VQR
 from qiskit.visualization import plot_distribution
 from qiskit import transpile
 from qiskit import qpy
@@ -15,7 +16,18 @@ def batch_results(folder):
         data = json.load(f)
 
     filename = data["filename"]
-    ml = VQC.from_dill(f"{folder}/{filename}.model")
+
+    if "ml_type" in data:
+        ml_type = data["ml_type"]
+    else:
+        ml_type = filename.split('_')[0]
+
+    if ml_type=="vqc":
+        ml = VQC.from_dill(f"{folder}/{filename}.model")
+    if ml_type=="vqr":
+        ml = VQR.from_dill(f"{folder}/{filename}.model")
+    else:
+        raise ValueError("Unknown model type.")
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
@@ -33,7 +45,10 @@ def batch_results(folder):
     with open(f"{folder}/base-circuit.qpy", "rb") as f:
         compiled_base_circuit = qpy.load(f)[0]
 
-    sampler, backend = algorithm.backend_def(bcknd)
+    if ml_type=="vqc":
+        primitive, _, backend = algorithm.backend_def(bcknd)
+    elif ml_type=="vqr":
+        _, primitive, backend = algorithm.backend_def(bcknd)
 
     if train_bcknd == "ideal" and backend is not None and hasattr(backend, 'target'):
         circuit = transpile(compiled_base_circuit, backend=backend, optimization_level=3)
@@ -47,13 +62,15 @@ def batch_results(folder):
         test_circuits.append(state_circuit)
 
     print("Geting data...")
-    if backend is not None:
-        num_shots = data.get("num_shots", 1024)
-        job = backend.run(test_circuits, shots=num_shots)
-        job_id = job.job_id()
-    else:
-        job = sampler.run(test_circuits)
-        job_id = job.job_id()
+    if ml_type=="vqc":
+        if backend is not None:
+            num_shots = data.get("num_shots", 1024)
+            job = backend.run(test_circuits, shots=num_shots) # 
+        else:
+            job = primitive.run(test_circuits)
+    elif ml_type=="vqr":
+        1
+    job_id = job.job_id()
 
     while job.status().name not in ['DONE', 'CANCELLED', 'ERROR']:
         print(f"[{time.strftime('%X')}] Job Status: {job.status().name}...")
