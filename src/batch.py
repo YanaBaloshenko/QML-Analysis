@@ -117,10 +117,6 @@ def batch_results(folder):
                 ev = batch_results[i].data.evs
                 val = float(ev) if np.isscalar(ev) else float(ev[0])
                 predictions.append(val)
-            
-            if "ERROR" not in str(predictions[0]):
-                binary_predictions = [(1 if p > 0.0 else 0) for p in predictions] # decision threshold (for -1,1 set to 0??)
-                data["binary_predictions"] = binary_predictions
 
     data["predictions"] = predictions
     data["job_id"] = str(job_id)

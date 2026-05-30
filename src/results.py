@@ -3,19 +3,25 @@ import json
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, mean_squared_error, mean_absolute_error
 
-from qiskit.primitives import StatevectorSampler
-from qiskit_machine_learning.gradients import ParamShiftSamplerGradient
+from qiskit.primitives import StatevectorSampler, StatevectorEstimator
+from qiskit_machine_learning.gradients import ParamShiftSamplerGradient, ParamShiftEstimatorGradient    
 from qiskit_machine_learning.algorithms.classifiers import VQC
+from qiskit_machine_learning.algorithms import VQR
 
-def vqc_report(folder):
+def vq_report(folder):
     # files prep
     with open(f"{folder}/metadata.json", "r") as f:
         data = json.load(f)
 
     filename = data["filename"]
-    ml = VQC.from_dill(f"{folder}/{filename}.model")
+    ml_type = data.get("ml_type", filename.split('_')[0])
+
+    if ml_type == "vqc":
+        ml = VQC.from_dill(f"{folder}/{filename}.model")
+    elif ml_type == "vqr":
+        ml = VQR.from_dill(f"{folder}/{filename}.model") # dif
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
@@ -29,35 +35,46 @@ def vqc_report(folder):
     if num_rec is not None:
         train_features, train_labels, test_features, test_labels = train_features[:num_rec], train_labels[:num_rec], test_features[:num_rec], test_labels[:num_rec]
     
-    predictions = data["predictions"]
+    predictions = data.get("predictions", [])
+    if predictions and "ERROR" not in str(predictions[0]):
+        if all(val in [0, 1, 0.0, 1.0] for val in predictions): # check if every single prediction is exactly 0, 1, 0.0, or 1.0
+            predictions = [int(p) for p in predictions]
+        else:
+            predictions = [(1 if p > 0.0 else 0) for p in predictions] # binarizing, decision threshold (for -1,1 set to 0??)
+    
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
-    sampler = StatevectorSampler()
-    ml.neural_network.sampler = sampler
-    ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
+    if ml_type == "vqc":
+        sampler = StatevectorSampler()
+        ml.neural_network.sampler = sampler
+        ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
+    if ml_type == "vqr":
+        estimator = StatevectorEstimator()
+        ml.neural_network.estimator = estimator
+        ml.neural_network.gradient = ParamShiftEstimatorGradient(estimator=estimator)
 
     # report calculations
     if not predictions or "ERROR_RETRIEVING_RESULTS" in predictions:
-        train_score = 0.0
-        test_score = 0.0
+        test_score, mse_val, mae_val = 0.0, 0.0, 0.0, 0.0, 0.0
         report = "N/A: All QPU inference jobs failed or returned errors."
         cm_text = "N/A: No valid data to display."
         print("No valid predictions found. Skipping metrics calculation.")
     else:
-        # calculating scores
-        test_score = accuracy_score(test_labels, data["predictions"])
-        train_score = ml.score(train_features, train_labels)
+        if ml_type == "vqr": # regression metrics (how well physical circuit holds ideal values)
+            mse_val = mean_squared_error(test_labels, predictions)
+            mae_val = mean_absolute_error(test_labels, predictions)
 
+        test_score = accuracy_score(test_labels, predictions) # calculating accuracy
         # calculating cm and scikit report
-        report = classification_report(test_labels, data["predictions"], target_names=["Normal (0)", "Attack (1)"], zero_division=0.0)
-        cm = confusion_matrix(test_labels, data["predictions"])
+        report = classification_report(test_labels, predictions, target_names=["Normal (0)", "Attack (1)"], zero_division=0.0)
+        cm = confusion_matrix(test_labels, predictions)
         tn, fp, fn, tp = cm.ravel()
         cm_text = f"""
                   Predicted Normal| Predicted Attack
 Actual Normal (0): {tn:^16} | {fp:^16}
 Actual Attack (1): {fn:^16} | {tp:^16}
 """
-    
+        
     # calculating feature importance
     sample_fi = test_features[0].reshape(1, -1)
     _ = ml.neural_network.forward(sample_fi, ml.weights)
@@ -87,8 +104,10 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         f.write("\n--- Training info ---\n")
         f.write(f"Number of classes: {data["num_classes"]}\n")
         f.write(f"Training time: {data.get('train_time', 'N/A')} s\n")
-        f.write(f"Score on the training dataset: {train_score:.2f}\n")
-        f.write(f"Score on the test dataset: {test_score:.2f}\n")
+        if ml_type == "vqr":
+            f.write(f"Mean Squared Error (MSE) on QPU: {mse_val:.4f}\n")
+            f.write(f"Mean Absolute Error (MAE) on QPU: {mae_val:.4f}\n")
+        f.write(f"Accuracy on QPU: {test_score:.2f}\n")
         
         f.write("\n--- Confusion matrix (class 0 - normal, class 1 - attack) ---\n")
         f.write(f"{cm_text}\n")
@@ -100,39 +119,46 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         f.write(f"{fi}\n")
 
         f.write("\n--- Model parameters ---\n")
-        f.write(f"Number of qubits: {data["num_qubits"]}\n")
-        f.write(f"Number of iterations: {data["nit"]}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji !!!!!!! maxiter from optimalizator
-        f.write(f"Number of Function Evaluations: {data["nfev"]}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
-        f.write(f"Loss function type: {data["loss_name"]}\n") # actual thing in fit_result
-        f.write(f"Loss function value: {data["fun"]}\n") # najniższa wartość funkcji straty - na jakim poziomie zatrzymał się trening
-        f.write(f"Initial point (starting weights): {data["initial_point"]}\n")
-        f.write(f"Weights: {data["weights"]}\n") # optimized weights after the training
-        f.write(f"Final Gradient Magnitude: {data["jac"]}\n") # if values are exactly zero everywhere right from the start - Barren Plateau
-        f.write(f"Number of Jacobian Evaluations: {data["njev"]}\n") # how many times the optimizer explicitly stopped to calculate that exact slope (the gradient) during the entire training process - might be very expensive (None for COBYLA)
+        f.write(f"Number of qubits: {data.get('num_qubits', 'N/A')}\n")
+        f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji !!!!!!! maxiter from optimalizator
+        f.write(f"Number of Function Evaluations: {data.get('nfev', 'N/A')}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
+        f.write(f"Loss function type: {data.get('loss_name', 'N/A')}\n") # actual thing in fit_result
+        f.write(f"Loss function value: {data.get('fun', 'N/A')}\n") # najniższa wartość funkcji straty - na jakim poziomie zatrzymał się trening
+        f.write(f"Initial point (starting weights): {data.get('initial_point', 'N/A')}\n")
+        f.write(f"Weights: {data.get('weights', 'N/A')}\n") # optimized weights after the training
+        f.write(f"Final Gradient Magnitude: {data.get('jac', 'N/A')}\n") # if values are exactly zero everywhere right from the start - Barren Plateau
+        f.write(f"Number of Jacobian Evaluations: {data.get('njev', 'N/A')}\n") # how many times the optimizer explicitly stopped to calculate that exact slope (the gradient) during the entire training process - might be very expensive (None for COBYLA)
 
         f.write("\n--- Neural network ---\n")
-        f.write(f"Features sent to NN: {data["num_inputs"]}\n")
-        f.write(f"Number of weights (dimensionality): {data["num_weights"]}\n") # imension of a gradient in wchich the minimum of objective function is searched
-        f.write(f"Final probability shape: {data["output_shape"]}\n") # if it's binary or not (number of classes)
+        f.write(f"Features sent to NN: {data.get('num_inputs', 'N/A')}\n")
+        f.write(f"Number of weights (dimensionality): {data.get('num_weights', 'N/A')}\n") # imension of a gradient in wchich the minimum of objective function is searched
+        f.write(f"Final probability shape: {data.get('output_shape', 'N/A')}\n") # if it's binary or not (number of classes)
 
-        f.write(f"\n--- Optimizer ({data['optimizer_name']}) settings ---\n")
-        for key, value in data["optimizer_settings"].items():
+        f.write(f"\n--- Optimizer ({data.get('optimizer_name', 'N/A')}) settings ---\n")
+        for key, value in data.get("optimizer_settings", {}).items():
             f.write(f"{key}: {value}\n")
 
-        f.write("\n--- Sampler info ---\n")
-        f.write(f"Default shots: {data["num_shots"]}\n")
-        if data["num_shots"] is not None:
-            total_cost = data["nfev"] * data["num_shots"]
-            f.write(f"Total computational cost: {total_cost} shots\n")
-        else:
-            f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
-
-def vqr_report(folder):
-    folder
+        if ml_type == "vqc":
+            f.write("\n--- Sampler info ---\n")
+            f.write(f"Default shots: {data["num_shots"]}\n")
+            if data["num_shots"] is not None:
+                total_cost = data["nfev"] * data["num_shots"]
+                f.write(f"Total computational cost: {total_cost} shots\n")
+            else:
+                f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
+        
+        elif ml_type == "vqr":
+            f.write("\n--- Estimator info ---\n") # dif section
+            num_shots = data.get("num_shots", "N/A")
+            f.write(f"Precision Parameter: {num_shots}\n")
+            if "Precision" in str(num_shots):
+                f.write(f"Total computational cost: Dynamic shots resolved by Hoeffding inequality based on precision.\n")
+            else:
+                f.write(f"Total computational cost: Exact statevector calculation ({data.get('nfev', 'N/A')} circuit evaluations)\n")
 
 def main():
     folder = "results/11052026_2134"
-    vqc_report(folder)
+    vq_report(folder)
 
 if __name__ == "__main__":
     main()
