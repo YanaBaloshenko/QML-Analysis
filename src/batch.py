@@ -1,9 +1,12 @@
 import numpy as np
 import json
 import time
+from matplotlib import pyplot as plt
 
 from qiskit_machine_learning.algorithms.classifiers import VQC
 from qiskit_machine_learning.algorithms import VQR
+from qiskit.quantum_info import SparsePauliOp
+
 from qiskit.visualization import plot_distribution
 from qiskit import transpile
 from qiskit import qpy
@@ -45,10 +48,7 @@ def batch_results(folder):
     with open(f"{folder}/base-circuit.qpy", "rb") as f:
         compiled_base_circuit = qpy.load(f)[0]
 
-    if ml_type=="vqc":
-        primitive, _, backend = algorithm.backend_def(bcknd)
-    elif ml_type=="vqr":
-        _, primitive, backend = algorithm.backend_def(bcknd)
+    sampler, estimator, backend = algorithm.backend_def(bcknd)
 
     if train_bcknd == "ideal" and backend is not None and hasattr(backend, 'target'):
         circuit = transpile(compiled_base_circuit, backend=backend, optimization_level=3)
@@ -65,11 +65,21 @@ def batch_results(folder):
     if ml_type=="vqc":
         if backend is not None:
             num_shots = data.get("num_shots", 1024)
-            job = backend.run(test_circuits, shots=num_shots) # 
-        else:
-            job = primitive.run(test_circuits)
+            sampler.options.default_shots = num_shots
+        job = sampler.run(test_circuits)
+
     elif ml_type=="vqr":
-        1
+        n_features = data["n_features"]
+        observable = SparsePauliOp.from_list([("Z" * n_features, 1)])
+        pubs = [(tc, observable) for tc in test_circuits]
+        
+        if backend is not None:
+            prec_val = data.get("num_shots", "0.05")
+            precision = float(prec_val.split(": ")[-1]) if isinstance(prec_val, str) else 0.05
+            estimator.options.default_precision = precision
+            
+        job = estimator.run(pubs)
+    
     job_id = job.job_id()
 
     while job.status().name not in ['DONE', 'CANCELLED', 'ERROR']:
@@ -89,41 +99,68 @@ def batch_results(folder):
         predictions = ["ERROR_RETRIEVING_RESULTS"] * len(test_features)
     else:
         predictions = []
-        for i in range(len(test_features)):
-            if backend is not None:
-                counts = batch_results.get_counts(i)
-            else:
-                data_pr = batch_results[i].data
-                counts = data_pr.meas.get_counts()
+
+        if ml_type == "vqc":
+            for i in range(len(test_features)):
+                if backend is not None:
+                    counts = batch_results.get_counts(i)
+                else:
+                    data_pr = batch_results[i].data
+                    counts = data_pr.meas.get_counts()
             
-            top_bitstring = max(counts, key=counts.get)
-            clean_bitstring = top_bitstring.replace(" ", "") # Good habit to prevent spacing errors
-            predictions.append(ml.neural_network.interpret(int(clean_bitstring, 2)))
+                top_bitstring = max(counts, key=counts.get)
+                clean_bitstring = top_bitstring.replace(" ", "") # Good habit to prevent spacing errors
+                predictions.append(ml.neural_network.interpret(int(clean_bitstring, 2)))
+        
+        if ml_type == "vqr":
+            for i in range(len(test_features)):
+                ev = batch_results[i].data.evs
+                val = float(ev) if np.isscalar(ev) else float(ev[0])
+                predictions.append(val)
+            
+            if "ERROR" not in str(predictions[0]):
+                binary_predictions = [(1 if p > 0.0 else 0) for p in predictions] # decision threshold (for -1,1 set to 0??)
+                data["binary_predictions"] = binary_predictions
 
     data["predictions"] = predictions
     data["job_id"] = str(job_id)
+
     with open(f"{folder}/metadata.json", "w") as f:
         json.dump(data, f, indent=4)
     print("Predictions successfully saved to metadata.json")
 
     if batch_results is not None:
         print("Generating plot...")
-        if backend is not None:
-            bitstrings = batch_results.get_counts(0)
-        else:
-            sampler_run = batch_results[0]
-            bitstrings = sampler_run.data.meas.get_counts()
-            
-        total_shots = sum(bitstrings.values())
-        
-    threshold = 0.02
-    dist = {state: count / total_shots for state, count in bitstrings.items()} 
-    filtered_dist = {state: prob for state, prob in dist.items() if prob > threshold}
-    noise_mass = 1.0 - sum(filtered_dist.values())
-    noise_text = f"Filtered Hardware Noise: {noise_mass:.1%}"
 
-    plot_distribution(filtered_dist, title="Quasi-probability", legend=[noise_text]).savefig(f"{folder}/plots/{filename}_distribution.png", dpi=300)
-    print("Plot generated.")
+        if ml_type == "vqc":
+            if backend is not None:
+                bitstrings = batch_results.get_counts(0)
+            else:
+                sampler_run = batch_results[0]
+                bitstrings = sampler_run.data.meas.get_counts()
+                
+            total_shots = sum(bitstrings.values())
+            threshold = 0.02
+            dist = {state: count / total_shots for state, count in bitstrings.items()} 
+            filtered_dist = {state: prob for state, prob in dist.items() if prob > threshold}
+            noise_mass = 1.0 - sum(filtered_dist.values())
+            noise_text = f"Filtered Hardware Noise: {noise_mass:.1%}"
+
+            plot_distribution(filtered_dist, title="Quasi-probability", legend=[noise_text]).savefig(f"{folder}/plots/{filename}_distribution.png", dpi=300)
+
+        elif ml_type == "vqr": # no noise to filter so we are gerring prediction distance from decision threshold
+            plt.figure(figsize=(10, 6)) 
+            plt.scatter(range(len(predictions)), predictions, color='blue', alpha=0.7, label="VQR Expectation Value")
+            plt.axhline(y=0.0, color='red', linestyle='--', label='Decision Boundary (0.0)')
+            plt.title("VQR Predictions (Expectation Values) on Hardware")
+            plt.xlabel("Test Record Index")
+            plt.ylabel("Measured Expectation Value")
+            plt.legend()
+            plt.grid(True, linestyle='--', alpha=0.5)
+            plt.savefig(f"{folder}/plots/{filename}_vqr_scatter.png", dpi=300)
+            plt.close()
+    
+        print("Plot generated.")
 
 def main():
     folder = 'results/11052026_2134'

@@ -61,7 +61,7 @@ def backend_def(bcknd):
         backend = IQMProvider(iqm_link, quantum_computer=bcknd).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
         
         estimator = BackendEstimatorV2(backend=backend) # !!!!!!!!!!!!!!!!!!!!!! check options
-        estimator.options.default_precision = 0.05 
+        estimator.options.default_precision = 0.05 # 0.05 is a sweet spot? - it's 400 shots per circuit (n = 1/precision^2)
         estimator.options.resilience_level = 1
         
         sampler = BackendSamplerV2(backend=backend)
@@ -152,7 +152,7 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
     feature_map = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
     ansatz = real_amplitudes(num_qubits=n_features, reps=1, entanglement='linear')
     
-    observable = SparsePauliOp.from_list([("Z" * n_features, 1)]) # observable !!!!!!!!!!!!!!!!! check
+    observable = SparsePauliOp.from_list([("Z" * n_features, 1)]) # observable !!!!!!!!!!!!!!!!! check # the result would be in [-1, 1]
 
     if hasattr(backend, 'target'):
         pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
