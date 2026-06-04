@@ -48,8 +48,8 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
             "d_file": d_file,
             "num_shots": num_shots,
             "filename": filename,
-            "num_rec": num_rec,"bcknd": bcknd,
-            "objective_func_vals": objective_func_vals
+            "num_rec": num_rec,
+            "bcknd": bcknd
         }, f, indent=4)
 
     print("Generating plots...")

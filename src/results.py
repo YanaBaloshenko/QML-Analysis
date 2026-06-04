@@ -120,7 +120,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
 
         f.write("\n--- Model parameters ---\n")
         f.write(f"Number of qubits: {data.get('num_qubits', 'N/A')}\n")
-        f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji !!!!!!! maxiter from optimalizator
+        f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji (maxiter from optimalizator)
         f.write(f"Number of Function Evaluations: {data.get('nfev', 'N/A')}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
         f.write(f"Loss function type: {data.get('loss_name', 'N/A')}\n") # actual thing in fit_result
         f.write(f"Loss function value: {data.get('fun', 'N/A')}\n") # najniższa wartość funkcji straty - na jakim poziomie zatrzymał się trening
@@ -131,7 +131,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
 
         f.write("\n--- Neural network ---\n")
         f.write(f"Features sent to NN: {data.get('num_inputs', 'N/A')}\n")
-        f.write(f"Number of weights (dimensionality): {data.get('num_weights', 'N/A')}\n") # imension of a gradient in wchich the minimum of objective function is searched
+        f.write(f"Number of weights (dimensionality): {data.get('num_weights', 'N/A')}\n") # dimension of a gradient in wchich the minimum of objective function is searched
         f.write(f"Final probability shape: {data.get('output_shape', 'N/A')}\n") # if it's binary or not (number of classes)
 
         f.write(f"\n--- Optimizer ({data.get('optimizer_name', 'N/A')}) settings ---\n")
