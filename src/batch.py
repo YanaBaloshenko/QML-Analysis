@@ -35,15 +35,14 @@ def batch_results(folder):
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
     num_rec = data["num_rec"]
+    test_features = sets['test_features']
+    if num_rec is not None:
+        test_features = sets['test_features'][:num_rec]
     train_bcknd = data["bcknd"]
     if "test_bcknd" in data:
         bcknd = data["test_bcknd"]
     else:
         bcknd = data["bcknd"]
-
-    test_features = sets['test_features']
-    if num_rec is not None:
-        test_features = sets['test_features'][:num_rec]
     
     with open(f"{folder}/base-circuit.qpy", "rb") as f:
         compiled_base_circuit = qpy.load(f)[0]

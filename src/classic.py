@@ -23,15 +23,21 @@ def calculate_feature_importance(model, test_features, test_labels, pca_weights,
 
 def main():
     # preparing files and vars
-    ml_type = "svc"
-    d_file = "kdd_3.14-scale_2-fpca_onehot-enc"
+    ml_type = "mlpr"
+    size = 300
+    n_f = 12
+    d_file = f"kdd_3.14-scale_{n_f}-fpca_onehot-enc_{size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
-    folder = f"results/classic/{date}"
+    f = f"results/classic/{ml_type}"
+    os.makedirs(f, exist_ok=True)
+    folder = f"{f}/{size}"
     os.makedirs(folder, exist_ok=True)
-    p_folder = f"results/classic/{date}/plots"
-    os.makedirs(p_folder, exist_ok=True)
     filename = f"{ml_type}_data-{d_file}_time-{date}"
+    save_path = f"{folder}/{filename}"
+    os.makedirs(save_path, exist_ok=True)
+    model_path = f"{save_path}/{filename}.joblib"
+    file_path = f"{save_path}/{filename}_report.txt"
     
     ################## data read ##################
     data = np.load(f"{d_path}/{d_file}.npz")
@@ -41,9 +47,10 @@ def main():
     test_labels = data['test_labels']
     n_features = train_features.shape[1]
 
-    num_rec = 4
-    train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
-    test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
+    num_rec = None
+    if num_rec != None:
+        train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
+        test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
     
     pca_weights = np.load(f"{d_path}/{d_file}_pcaweights.npy")
     encoded_names = np.load(f"{d_path}/{d_file}_names.npy", allow_pickle=True).tolist()
@@ -78,7 +85,6 @@ def main():
         
     ################## saving results ##################
     print("Preparing results...")
-    model_path = f"{folder}/{filename}.joblib"
     joblib.dump(ml, model_path)
     # standard metrics
     acc = accuracy_score(test_labels, predictions)
@@ -107,7 +113,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}"""
     fi = fi_df.to_string(index=False, justify='left', float_format=lambda x: f"{x:.6f}")
     
     print("Saving report...")
-    with open(f"{folder}/{filename}_report.txt", "w") as f:
+    with open(file_path, "w") as f:
         f.write(f"Model {type(ml).__name__}\n")
         f.write("\n--- Dataset info ---\n")
         f.write(f"Data file used: {d_file}\n")

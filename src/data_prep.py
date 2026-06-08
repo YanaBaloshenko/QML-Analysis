@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-import datetime
+import math
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
@@ -10,10 +10,14 @@ from sklearn.model_selection import train_test_split
 
 def prepare_data():
     range = np.pi # for normalization
-    n_features = 2 # for pca
-    folder = f"dataset/kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc"
+    n_features = 12 # for pca
+    size = 300
+    trn_size = math.ceil((size*85)/100) # 85:15 train to test
+    tst_size = size-trn_size
+    name = f"kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc_{size}"
+    folder = f"dataset/{name}"
     os.makedirs(folder, exist_ok=True)
-    filename = f"{folder}/kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc"
+    filename = f"{folder}/{name}"
 
     print("Reading files...")
     df_train = pd.read_csv("dataset/nsl-kdd/KDDTrain+.txt") # reading files
@@ -27,8 +31,8 @@ def prepare_data():
 
     # Stratified Sampling (saving the proportions)
     print("Sampling...")
-    _, df_train = train_test_split(df_train, test_size=125, stratify=df_train['label'], random_state=42) # in qiskit tutorial there are 150 samples so I'm using 150 samples split by around 85:15 proportions as in original dataset
-    _, df_test = train_test_split(df_test, test_size=25, stratify=df_test['label'], random_state=42)
+    _, df_train = train_test_split(df_train, test_size=trn_size, stratify=df_train['label'], random_state=42)
+    _, df_test = train_test_split(df_test, test_size=tst_size, stratify=df_test['label'], random_state=42)
 
     y_train = df_train['label'].values
     y_test = df_test['label'].values
@@ -40,7 +44,7 @@ def prepare_data():
     x_combined = pd.concat([x_train_raw, x_test_raw], axis = 0)
 
     print("One-Hot encoding...")
-    x_combined_enc = pd.get_dummies(x_combined) # one-hot encoding !!!!!!!!!!!!!!!!!!!!! check
+    x_combined_enc = pd.get_dummies(x_combined)
     encoded_feature_names = x_combined_enc.columns.tolist()
     np.save(f"{filename}_names.npy", encoded_feature_names)
 

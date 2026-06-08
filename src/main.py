@@ -110,7 +110,8 @@ def main():
     ml_type = "vqc"
     pre_bcknd = "ideal"
     bcknd = "ideal"
-    d_file = "kdd_3.14-scale_2-fpca_onehot-enc"
+    d_file = "kdd_3.14-scale_5-fpca_onehot-enc_150-rn_30-tst"
+    d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
     #date = "11052026_1149"
     folder = f"results/{date}"
@@ -123,15 +124,16 @@ def main():
     filename = f"{ml_type}_data-{d_file}_backend-{bcknd}_time-{date}"
 
     ################## data read ##################
-    data = np.load(f"dataset/{d_file}/{d_file}.npz")
+    data = np.load(f"{d_path}/{d_file}.npz")
     train_features = data['train_features']
     test_features = data['test_features']
     train_labels = data['train_labels']
     test_labels = data['test_labels']
     n_features = train_features.shape[1]
-    num_rec = 4
-    train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
-    test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
+    num_rec = None
+    if num_rec != None:
+        train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
+        test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
 
     ################## training and saving results ##################
     if ml_type=="vqc" or ml_type=="vqr":

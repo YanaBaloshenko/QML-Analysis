@@ -1,0 +1,155 @@
+Model MLPRegressor
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_6-fpca_onehot-enc_300
+Number of features: 6
+Number of records: train - 255, test - 45
+
+--- Training info ---
+Training time: 0.18041682243347168 s
+Inference time for 45 records: 0.0000 s
+Number of iterations for convergance: 343
+Models complexity (Numbers of Weights & Biases): 191
+Accuracy: 0.6889
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        18        |        1        
+Actual Attack (1):        13        |        13       
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.58      0.95      0.72        19
+  Attack (1)       0.93      0.50      0.65        26
+
+    accuracy                           0.69        45
+   macro avg       0.75      0.72      0.69        45
+weighted avg       0.78      0.69      0.68        45
+
+
+--- Feature Importance ---
+Original Feature             Importance
+            srv_serror_rate 0.248029   
+   dst_host_srv_serror_rate 0.245377   
+                serror_rate 0.242135   
+                    flag_S0 0.241744   
+       dst_host_serror_rate 0.237352   
+            srv_rerror_rate 0.183149   
+   dst_host_srv_rerror_rate 0.182678   
+                rerror_rate 0.174240   
+       dst_host_rerror_rate 0.172689   
+                   flag_REJ 0.140234   
+          protocol_type_tcp 0.119369   
+          protocol_type_udp 0.076802   
+                    flag_SF 0.064171   
+               service_http 0.064123   
+              same_srv_rate 0.063323   
+                  logged_in 0.060962   
+dst_host_same_src_port_rate 0.058858   
+     dst_host_diff_srv_rate 0.056704   
+           service_domain_u 0.050397   
+              diff_srv_rate 0.045333   
+         protocol_type_icmp 0.042567   
+              service_other 0.036458   
+            service_private 0.033931   
+                  srv_count 0.030199   
+              service_ecr_i 0.026874   
+                  flag_RSTO 0.022432   
+                      count 0.020666   
+                  flag_RSTR 0.020580   
+                   duration 0.013862   
+dst_host_srv_diff_host_rate 0.013568   
+              service_eco_i 0.012085   
+         srv_diff_host_rate 0.011021   
+           service_iso_tsap 0.009178   
+            service_discard 0.008298   
+                service_ssh 0.007953   
+         dst_host_srv_count 0.007268   
+                service_ctf 0.007037   
+                service_mtp 0.006929   
+              service_imap4 0.006820   
+              service_whois 0.006592   
+             service_telnet 0.005439   
+               service_exec 0.005246   
+               service_uucp 0.005239   
+               service_ldap 0.005213   
+                service_efs 0.005118   
+     dst_host_same_srv_rate 0.005014   
+          service_uucp_path 0.004976   
+               service_name 0.004857   
+               service_auth 0.004766   
+             service_sunrpc 0.004693   
+             service_gopher 0.004637   
+              service_ntp_u 0.004501   
+                service_ftp 0.004223   
+                    flag_SH 0.003984   
+              service_urp_i 0.003608   
+             dst_host_count 0.003019   
+           service_ftp_data 0.002996   
+              service_login 0.002836   
+              service_vmnet 0.002636   
+            service_courier 0.002529   
+             service_finger 0.002490   
+                service_bgp 0.002454   
+                 root_shell 0.002427   
+        service_netbios_dgm 0.002404   
+            service_daytime 0.002402   
+               service_link 0.002383   
+        service_netbios_ssn 0.002346   
+          num_failed_logins 0.002128   
+               su_attempted 0.002128   
+                   num_root 0.002083   
+            num_compromised 0.002060   
+                  dst_bytes 0.002056   
+                    flag_S1 0.001689   
+                        hot 0.001193   
+             service_domain 0.000951   
+               service_smtp 0.000539   
+             is_guest_login 0.000525   
+             wrong_fragment 0.000447   
+         num_file_creations 0.000423   
+                  src_bytes 0.000327   
+                 num_shells 0.000081   
+                       land 0.000000   
+                     urgent 0.000000   
+           num_access_files 0.000000   
+          num_outbound_cmds 0.000000   
+              is_host_login 0.000000   
+              service_pop_3 0.000000   
+         service_remote_job 0.000000   
+                    flag_S3 0.000000   
+
+--- Model Architecture & Parameters ---
+Hidden Layers: (10, 10)
+Number of Layers (including input/output): 4
+Loss function type: squared_error
+Final Loss function value: 0.013994
+Output activation function: identity
+Number of trainable weights: 191
+
+--- Optimizer (MLPRegressor) Settings ---
+activation: relu
+alpha: 0.0001
+batch_size: auto
+beta_1: 0.9
+beta_2: 0.999
+early_stopping: True
+epsilon: 1e-08
+hidden_layer_sizes: (10, 10)
+learning_rate: constant
+learning_rate_init: 0.001
+loss: squared_error
+max_fun: 15000
+max_iter: 1000
+momentum: 0.9
+n_iter_no_change: 10
+nesterovs_momentum: True
+power_t: 0.5
+random_state: 42
+shuffle: True
+solver: adam
+tol: 0.0001
+validation_fraction: 0.1
+verbose: False
+warm_start: False
