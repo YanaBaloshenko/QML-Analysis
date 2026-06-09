@@ -74,10 +74,10 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
 
     plt.close('all') # RAM cleaning
 
-    #if bcknd == "ideal":
-        #batch.batch_results(folder)
-        #if ml_type == "vqc":
-            #results.vqc_report(folder)
+    if bcknd == "ideal":
+        batch.batch_results(folder)
+        if ml_type == "vqc" or ml_type=="vqr":
+            results.vq_report(folder)
 
 def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, pre_t):
     if ml_type=="vqc":
@@ -106,22 +106,31 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
     results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
 
 def main():
-    # preparing files and vars
+    # preparing vars
     ml_type = "vqc"
     pre_bcknd = "ideal"
     bcknd = "ideal"
-    d_file = "kdd_3.14-scale_5-fpca_onehot-enc_150-rn_30-tst"
+    d_size = 200
+    d_n = 5
+    num_rec = None
+
+    # preparing files
+    d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
-    #date = "11052026_1149"
-    folder = f"results/{date}"
-    os.makedirs(folder, exist_ok=True)
-    pre_folder = f"{folder}/pretraining"
-    os.makedirs(f"{folder}/pretraining", exist_ok=True)
-    os.makedirs(f"{folder}/plots", exist_ok=True)
-    os.makedirs(f"{pre_folder}/plots", exist_ok=True)
-    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
+    if bcknd == "ideal":
+        r_folder = "results/ideal"
+    else:
+        r_folder = "results/qpu"
     filename = f"{ml_type}_data-{d_file}_backend-{bcknd}_time-{date}"
+    folder = f"{r_folder}/{filename}"
+    os.makedirs(folder, exist_ok=True)
+    os.makedirs(f"{folder}/plots", exist_ok=True)
+    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
+    if bcknd is not "ideal":
+        pre_folder = f"{folder}/pretraining"
+        os.makedirs(f"{folder}/pretraining", exist_ok=True)
+        os.makedirs(f"{pre_folder}/plots", exist_ok=True)
 
     ################## data read ##################
     data = np.load(f"{d_path}/{d_file}.npz")
@@ -130,14 +139,13 @@ def main():
     train_labels = data['train_labels']
     test_labels = data['test_labels']
     n_features = train_features.shape[1]
-    num_rec = None
     if num_rec != None:
         train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
         test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
 
     ################## training and saving results ##################
     if ml_type=="vqc" or ml_type=="vqr":
-        if pre_bcknd is not None:
+        if (bcknd is not "ideal") and (pre_bcknd is not None):
             print("Starting pre-training...")
             training(ml_type, pre_bcknd, None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
             algorithm.objective_func_vals.clear() # clearing objective function values from pre-training
