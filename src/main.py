@@ -119,9 +119,9 @@ def main():
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
     if bcknd == "ideal":
-        r_folder = "results/ideal"
+        r_folder = f"results/ideal/{ml_type}"
     else:
-        r_folder = "results/qpu"
+        r_folder = f"results/qpu/{ml_type}"
     filename = f"{ml_type}_data-{d_file}_backend-{bcknd}_time-{date}"
     folder = f"{r_folder}/{filename}"
     os.makedirs(folder, exist_ok=True)
