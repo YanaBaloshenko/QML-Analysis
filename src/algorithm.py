@@ -108,7 +108,7 @@ def vqc_def(n_features, bcknd, initial_point, folder, file_name):
     # qubits_initially_zero – (bool) indicates whether the input circuit is zero-initialized
 
     if bcknd == "ideal":
-        optimizer = SPSA(maxiter=40)
+        optimizer = SPSA(maxiter=10, learning_rate=0.02, perturbation=0.05)
     else:
         optimizer = spsa
 

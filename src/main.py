@@ -32,8 +32,8 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
             "nit": int(ml.fit_result.nit),
             "nfev": int(ml.fit_result.nfev),
             "fun": float(ml.fit_result.fun),
-            "jac": float(ml.fit_result.jac) if ml.fit_result.jac is not None else 0,
-            "njev": int(ml.fit_result.njev) if ml.fit_result.njev is not None else 0,
+            "jac": float(ml.fit_result.jac) if ml.fit_result.jac != None else 0,
+            "njev": int(ml.fit_result.njev) if ml.fit_result.njev != None else 0,
             "initial_point": ml.initial_point.tolist() if ml.initial_point is not None else None,
             "optimizer_name": type(ml.optimizer).__name__,
             "optimizer_settings": {k: str(v) for k, v in ml.optimizer.settings.items()},
@@ -53,11 +53,11 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
         }, f, indent=4)
 
     print("Generating plots...")
-    if compiled_base_circuit is not None:
+    if compiled_base_circuit != None:
         compiled_base_circuit.draw(output='mpl', idle_wires=False).savefig(f"{folder}/plots/{filename}_transpiled-circuit.png", dpi=300)
     else:
         print("No circuit, skipping transpilation plot...")
-    if backend is not None:
+    if backend != None:
         plot_circuit_layout(compiled_base_circuit, backend).savefig(f"{folder}/plots/{filename}_hardware-layout.png", dpi=300)
         plot_error_map(backend).savefig(f"{folder}/plots/{filename}_error-map.png", dpi=300)
     else:
@@ -110,7 +110,7 @@ def main():
     ml_type = "vqc"
     pre_bcknd = "ideal"
     bcknd = "ideal"
-    d_size = 200
+    d_size = 240
     d_n = 5
     num_rec = None
 
@@ -127,7 +127,7 @@ def main():
     os.makedirs(folder, exist_ok=True)
     os.makedirs(f"{folder}/plots", exist_ok=True)
     os.makedirs(f"{folder}/checkpoints", exist_ok=True)
-    if bcknd is not "ideal":
+    if bcknd != "ideal":
         pre_folder = f"{folder}/pretraining"
         os.makedirs(f"{folder}/pretraining", exist_ok=True)
         os.makedirs(f"{pre_folder}/plots", exist_ok=True)
@@ -145,7 +145,7 @@ def main():
 
     ################## training and saving results ##################
     if ml_type=="vqc" or ml_type=="vqr":
-        if (bcknd is not "ideal") and (pre_bcknd is not None):
+        if (bcknd != "ideal") and (pre_bcknd != None):
             print("Starting pre-training...")
             training(ml_type, pre_bcknd, None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
             algorithm.objective_func_vals.clear() # clearing objective function values from pre-training

@@ -21,13 +21,13 @@ def batch_results(folder):
     filename = data["filename"]
 
     if "ml_type" in data:
-        ml_type = data["ml_type"]
+        ml_type = str(data["ml_type"])
     else:
-        ml_type = filename.split('_')[0]
+        ml_type = str(filename.split('_')[0])
 
     if ml_type=="vqc":
         ml = VQC.from_dill(f"{folder}/{filename}.model")
-    if ml_type=="vqr":
+    elif ml_type=="vqr":
         ml = VQR.from_dill(f"{folder}/{filename}.model")
     else:
         raise ValueError("Unknown model type.")
@@ -158,7 +158,7 @@ def batch_results(folder):
         print("Plot generated.")
 
 def main():
-    folder = 'results/11052026_2134'
+    folder = 'results/ideal/vqc/vqc_data-kdd_3.14-scale_5-fpca_onehot-enc_240_backend-ideal_time-09062026_1650'
     batch_results(folder)
 
 if __name__ == "__main__":
