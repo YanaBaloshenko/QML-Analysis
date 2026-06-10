@@ -4,7 +4,6 @@ import datetime
 import numpy as np
 import pandas as pd
 import joblib
-from matplotlib import pyplot as plt
 
 from sklearn.svm import SVC, SVR
 from sklearn.neural_network import MLPRegressor

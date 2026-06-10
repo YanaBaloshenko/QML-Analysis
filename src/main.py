@@ -5,6 +5,8 @@ import datetime
 import time
 import os
 import json
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from qiskit.visualization import (plot_circuit_layout, plot_error_map)
 from qiskit import qpy
@@ -124,7 +126,7 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
 
     results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
 
-def prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec):
+def prep(ml_type, bcknd, d_size, d_n, num_rec):
     d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
@@ -155,9 +157,9 @@ def prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec):
 
     ################## training and saving results ##################
     if ml_type=="vqc" or ml_type=="vqr":
-        if (bcknd != "ideal") and (pre_bcknd != None):
+        if (bcknd != "ideal"):
             print("Starting pre-training...")
-            training(ml_type, pre_bcknd, None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
+            training(ml_type, "ideal", None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
             algorithm.objective_func_vals.clear() # clearing objective function values from pre-training
             pretrained_weights = np.load(f"{pre_folder}/pretrained_weights.npy")
         else:
@@ -173,13 +175,12 @@ def prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec):
 
 def main():
     ml_type = "vqc"
-    pre_bcknd = "ideal"
     bcknd = "ideal"
     d_size = 240
     d_n = 5
     num_rec = None
 
-    prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec)
+    prep(ml_type, bcknd, d_size, d_n, num_rec)
     
 if __name__ == "__main__":
     main()

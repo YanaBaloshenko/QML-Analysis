@@ -2,7 +2,6 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, mean_squared_error, mean_absolute_error
 
 from qiskit.primitives import StatevectorSampler, StatevectorEstimator

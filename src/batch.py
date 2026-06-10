@@ -1,6 +1,8 @@
 import numpy as np
 import json
 import time
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 from qiskit_machine_learning.algorithms.classifiers import VQC
