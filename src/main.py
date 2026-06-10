@@ -124,16 +124,7 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
 
     results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
 
-def main():
-    # preparing vars
-    ml_type = "vqc"
-    pre_bcknd = "ideal"
-    bcknd = "ideal"
-    d_size = 240
-    d_n = 5
-    num_rec = None
-
-    # preparing files
+def prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec):
     d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
@@ -178,7 +169,17 @@ def main():
         print("Starting training...")
         training(ml_type, bcknd, None, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
     else:
-        raise ValueError("No such model defined.")    
+        raise ValueError("No such model defined.")  
+
+def main():
+    ml_type = "vqc"
+    pre_bcknd = "ideal"
+    bcknd = "ideal"
+    d_size = 240
+    d_n = 5
+    num_rec = None
+
+    prep(ml_type, pre_bcknd, bcknd, d_size, d_n, num_rec)
     
 if __name__ == "__main__":
     main()
