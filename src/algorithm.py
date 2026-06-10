@@ -89,7 +89,7 @@ def vqc_def(n_features, bcknd, initial_point, folder, file_name):
         pm = generate_preset_pass_manager(optimization_level=2) # for ideal backend, no need to specify target as it doesn't have any constraints on gates or connectivity
 
     if bcknd == "ideal":
-        optimizer = SPSA(maxiter=100)
+        optimizer = SPSA(maxiter=50)
     else:
         optimizer = spsa
 
@@ -126,7 +126,7 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
     _, estimator, backend = backend_def(bcknd) 
 
     if bcknd == "ideal":
-        optimizer = SPSA(maxiter=40)
+        optimizer = SPSA(maxiter=50)
     else:
         optimizer = spsa
 

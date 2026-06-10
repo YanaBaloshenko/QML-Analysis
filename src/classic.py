@@ -23,9 +23,9 @@ def calculate_feature_importance(model, test_features, test_labels, pca_weights,
 
 def main():
     # preparing files and vars
-    ml_type = "svc"
-    n_f = 5
-    size = 1000
+    ml_type = "mlpr"
+    n_f = 10
+    size = 200
     d_file = f"kdd_3.14-scale_{n_f}-fpca_onehot-enc_{size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
