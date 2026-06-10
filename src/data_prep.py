@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 def prepare_data():
     range = np.pi # for normalization
     n_features = 5 # for pca
-    size = 1000
+    size = 100
     trn_size = math.ceil((size*85)/100) # 85:15 train to test
     tst_size = size-trn_size
     name = f"kdd_{range:.2f}-scale_{n_features}-fpca_onehot-enc_{size}"

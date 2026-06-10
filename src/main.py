@@ -17,7 +17,7 @@ import algorithm
 import results
 import batch
 
-def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit):
+def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, filename, compiled_base_circuit):
     num_shots = None
     if bcknd != "ideal":
         if ml_type in ["vqc", "qsvc", "qsvr"]: 
@@ -25,7 +25,7 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
         elif ml_type == "vqr":
             num_shots = f"Precision: {primitive.options.default_precision}" # vqr has precision instead of num_shots and measures till it achieves it
 
-    print("\nSaving data...")
+    print(f"\nSaving data to {folder}...")
     metadata = {
         "ml_type": ml_type,
         "train_time": train_time,
@@ -33,7 +33,6 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
         "d_file": d_file,
         "num_shots": num_shots,
         "filename": filename,
-        "num_rec": num_rec,
         "bcknd": bcknd
     }
 
@@ -42,13 +41,12 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
             "nit": int(ml.fit_result.nit) if ml.fit_result else None,
             "nfev": int(ml.fit_result.nfev) if ml.fit_result else None,
             "fun": float(ml.fit_result.fun) if ml.fit_result else None,
-            "jac": float(ml.fit_result.jac) if ml.fit_result.jac != None else 0,
-            "njev": int(ml.fit_result.njev) if ml.fit_result.njev != None else 0,
+            "jac": float(ml.fit_result.jac) if ml.fit_result.jac is not None else 0,
+            "njev": int(ml.fit_result.njev) if ml.fit_result.njev is not None else 0,
             "initial_point": ml.initial_point.tolist() if ml.initial_point is not None else None,
             "optimizer_name": type(ml.optimizer).__name__,
             "optimizer_settings": {k: str(v) for k, v in ml.optimizer.settings.items()},
             "loss_name": type(ml.loss).__name__,
-            "num_classes": ml.num_classes,
             "num_inputs": ml.neural_network.num_inputs,
             "num_weights": ml.neural_network.num_weights,
             "output_shape": ml.neural_network.output_shape[0],
@@ -90,10 +88,9 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
 
     if bcknd == "ideal":
         batch.batch_results(folder)
-        if ml_type == "vqc" or ml_type=="vqr":
-            results.vq_report(folder)
+        results.report(folder)
 
-def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, pre_t):
+def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, d_file, folder, filename, pre_t):
     if ml_type=="vqc":
         ml, pm, primitive, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
     elif ml_type=="vqr":
@@ -115,18 +112,18 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
         pretrained_weights = ml.weights
         np.save(f"{folder}/pretrained_weights.npy", pretrained_weights)
 
-    print("Preparing base circuit...")
-    if ml_type in ["vqc", "vqr"]:
+    if ml_type == "vqc" and bcknd != "ideal":
+        print("Preparing base circuit...")
         base_circuit = ml.neural_network.circuit
+        compiled_base_circuit = pm.run(base_circuit)
+        with open(f"{folder}/base-circuit.qpy", "wb") as f:
+            qpy.dump(compiled_base_circuit, f)
     else:
-        base_circuit = ml.quantum_kernel.feature_map
-    compiled_base_circuit = pm.run(base_circuit)
-    with open(f"{folder}/base-circuit.qpy", "wb") as f:
-        qpy.dump(compiled_base_circuit, f)
+        compiled_base_circuit = None
 
-    results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit)
+    results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, filename, compiled_base_circuit)
 
-def prep(ml_type, bcknd, d_size, d_n, num_rec):
+def prep(ml_type, bcknd, d_size, d_n):
     d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
@@ -151,36 +148,32 @@ def prep(ml_type, bcknd, d_size, d_n, num_rec):
     train_labels = data['train_labels']
     test_labels = data['test_labels']
     n_features = train_features.shape[1]
-    if num_rec != None:
-        train_features, train_labels = train_features[:num_rec], train_labels[:num_rec] # for faster testing, comment out for full dataset
-        test_features, test_labels = test_features[:num_rec], test_labels[:num_rec]
 
     ################## training and saving results ##################
     if ml_type=="vqc" or ml_type=="vqr":
         if (bcknd != "ideal"):
             print("Starting pre-training...")
-            training(ml_type, "ideal", None, train_features, train_labels, n_features, num_rec, d_file, pre_folder, filename, True)
+            training(ml_type, "ideal", None, train_features, train_labels, n_features, d_file, pre_folder, filename, True)
             algorithm.objective_func_vals.clear() # clearing objective function values from pre-training
             pretrained_weights = np.load(f"{pre_folder}/pretrained_weights.npy")
         else:
             pretrained_weights = None
         print("Starting training...")
-        training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
+        training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, d_file, folder, filename, False)
 
     elif ml_type=="qsvc" or ml_type=="qsvr":
         print("Starting training...")
-        training(ml_type, bcknd, None, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
+        training(ml_type, bcknd, None, train_features, train_labels, n_features, d_file, folder, filename, False)
     else:
         raise ValueError("No such model defined.")  
 
 def main():
-    ml_type = "vqc"
     bcknd = "ideal"
-    d_size = 240
+    ml_type = "vqr" # ["vqc", "vqr", "qsvc", "qsvr"]
     d_n = 5
-    num_rec = None
+    d_size = 240
 
-    prep(ml_type, bcknd, d_size, d_n, num_rec)
+    prep(ml_type, bcknd, d_size, d_n)
     
 if __name__ == "__main__":
     main()

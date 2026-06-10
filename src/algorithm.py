@@ -95,7 +95,7 @@ def vqc_def(n_features, bcknd, initial_point, folder, file_name):
 
     custom_callback = get_callback(folder, file_name)
 
-    print("Defining algorithm...")
+    print("Defining VQC...")
     vqc = VQC(
         # num_qubits (also defined by feature map and ansatz)
         feature_map=feature_map,
@@ -127,22 +127,19 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
 
     if bcknd == "ideal":
         optimizer = SPSA(maxiter=50)
+        pm = None
     else:
         optimizer = spsa
+        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
 
     feature_map = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
     ansatz = real_amplitudes(num_qubits=n_features, reps=1, entanglement='linear')
     
     observable = SparsePauliOp.from_list([("Z" * n_features, 1)]) # observable !!!!!!!!!!!!!!!!! check # the result would be in [-1, 1]
 
-    if hasattr(backend, 'target'):
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-    else:
-        pm = generate_preset_pass_manager(optimization_level=2)
-
     custom_callback = get_callback(folder, file_name)
 
-    print("Defining algorithm...")
+    print("Defining VQR...")
     vqr = VQR(
         #num_qubits (int | None) – for the underlying QNN, if None - derived from the feature map or ansatz
         feature_map=feature_map, # zz_feature_map() is default, for a single qubit regression problem - z_feature_map()
@@ -159,7 +156,6 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
 
     vqr.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
     vqr.ansatz.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_ansatz.png", dpi=300, bbox_inches='tight')
-    vqr.circuit.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_complete-circuit.png", dpi=300, bbox_inches='tight')
 
     return vqr, pm, estimator, backend, objective_func_vals
 
@@ -183,7 +179,7 @@ def qsvc_def(n_features, bcknd, folder, file_name):
     else:
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
-    print("Defining algorithm...")
+    print("Defining QSVC...")
     qsvc = QSVC(quantum_kernel=qkernel)
 
     qkernel.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
@@ -210,7 +206,7 @@ def qsvr_def(n_features, bcknd, folder, file_name):
     else:
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
-    print("Defining algorithm...")
+    print("Defining QSVR...")
     qsvr = QSVR(quantum_kernel=qkernel)
 
     qkernel.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')

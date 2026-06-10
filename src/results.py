@@ -8,7 +8,7 @@ from qiskit.primitives import StatevectorSampler, StatevectorEstimator
 from qiskit_machine_learning.gradients import ParamShiftSamplerGradient, ParamShiftEstimatorGradient    
 from qiskit_machine_learning.algorithms import VQC, VQR, QSVC, QSVR
 
-def vq_report(folder):
+def report(folder):
     # files prep
     with open(f"{folder}/metadata.json", "r") as f:
         data = json.load(f)
@@ -33,13 +33,13 @@ def vq_report(folder):
     test_features = sets['test_features']
     test_labels = sets['test_labels']
 
-    num_rec = data["num_rec"]
+    num_rec = data.get('num_rec', None)
     if num_rec is not None:
         train_features, train_labels, test_features, test_labels = train_features[:num_rec], train_labels[:num_rec], test_features[:num_rec], test_labels[:num_rec]
     
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
-    if ml_type in ["vqc", "qsvc", "qsvr"]:
+    if ml_type == "vqc":
         sampler = StatevectorSampler()
         ml.neural_network.sampler = sampler
         ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
@@ -49,6 +49,8 @@ def vq_report(folder):
         ml.neural_network.gradient = ParamShiftEstimatorGradient(estimator=estimator)
 
     predictions = data.get("predictions", [])
+    if predictions and isinstance(predictions[0], list):
+        predictions = [p[0] for p in predictions]
     if predictions and "ERROR" not in str(predictions[0]):
         if all(val in [0, 1, 0.0, 1.0] for val in predictions): # check if every single prediction is exactly 0, 1, 0.0, or 1.0
             predictions = [int(p) for p in predictions]
@@ -109,9 +111,9 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         f.write(f"Number of classes: {data.get('num_classes', 'N/A')}\n")
         f.write(f"Training time: {data.get('train_time', 'N/A')} s\n")
         if ml_type in ["vqr", "qsvr"]:
-            f.write(f"Mean Squared Error (MSE) on QPU: {mse_val:.4f}\n")
-            f.write(f"Mean Absolute Error (MAE) on QPU: {mae_val:.4f}\n")
-        f.write(f"Accuracy on QPU: {test_score:.2f}\n")
+            f.write(f"Mean Squared Error (MSE): {mse_val:.4f}\n")
+            f.write(f"Mean Absolute Error (MAE): {mae_val:.4f}\n")
+        f.write(f"Accuracy: {test_score:.2f}\n")
         
         f.write("\n--- Confusion matrix (class 0 - normal, class 1 - attack) ---\n")
         f.write(f"{cm_text}\n")
@@ -146,7 +148,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
             f.write(f"Number of Support Vectors: {data.get('support_vectors', 'N/A')}\n")
             f.write(f"Kernel Type: FidelityQuantumKernel\n")
 
-        if ml_type in ["vqc", "qsvc", "qsvr"]:
+        if ml_type == "vqc":
             f.write("\n--- Sampler info ---\n")
             f.write(f"Default shots: {data['num_shots']}\n")
             if ml_type == "vqc" and data.get('num_shots') is not None:
@@ -165,8 +167,8 @@ Actual Attack (1): {fn:^16} | {tp:^16}
                 f.write(f"Total computational cost: Exact statevector calculation ({data.get('nfev', 'N/A')} circuit evaluations)\n")
 
 def main():
-    folder = "results/11052026_2134"
-    vq_report(folder)
+    folder = "results/ideal/vqc/vqc_data-kdd_3.14-scale_5-fpca_onehot-enc_240_backend-ideal_time-10062026_1215"
+    report(folder)
 
 if __name__ == "__main__":
     main()

@@ -20,11 +20,7 @@ def calculate_feature_importance(model, test_features, test_labels, pca_weights,
     
     return fi_df
 
-def main():
-    # preparing files and vars
-    ml_type = "mlpr"
-    n_f = 10
-    size = 200
+def train(ml_type, n_f, size):
     d_file = f"kdd_3.14-scale_{n_f}-fpca_onehot-enc_{size}"
     d_path = f"dataset/{d_file}"
     date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
@@ -152,6 +148,17 @@ Actual Attack (1): {fn:^16} | {tp:^16}"""
         f.write(f"\n--- Optimizer ({type(ml).__name__}) Settings ---\n")
         for key, value in ml.get_params().items():
             f.write(f"{key}: {value}\n")
+
+def main():
+    n_f = [5, 6, 7, 8, 9, 10, 11, 12]
+    size = [100, 160, 200, 220, 240, 260, 280, 300]
+
+    ml_type = ["svc", "svr", "mlpr"]
+
+    for ml in ml_type:
+        for n in n_f:
+            for s in size:
+                train(ml, n, s)
 
 if __name__ == "__main__":
     main()
