@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from qiskit_machine_learning.algorithms.classifiers import VQC
 from qiskit_machine_learning.algorithms import VQR
 from qiskit.quantum_info import SparsePauliOp
+from qiskit_machine_learning.algorithms import QSVC, QSVR
 
 from qiskit.visualization import plot_distribution
 from qiskit import transpile
@@ -29,6 +30,10 @@ def batch_results(folder):
         ml = VQC.from_dill(f"{folder}/{filename}.model")
     elif ml_type=="vqr":
         ml = VQR.from_dill(f"{folder}/{filename}.model")
+    elif ml_type=="qsvc":
+        ml = QSVC.from_dill(f"{folder}/{filename}.model")
+    elif ml_type=="qsvr":
+        ml = QSVR.from_dill(f"{folder}/{filename}.model")
     else:
         raise ValueError("Unknown model type.")
 
@@ -55,75 +60,87 @@ def batch_results(folder):
         circuit = compiled_base_circuit
 
     print("Preparing test circuits...")
-    test_circuits = []
-    for feature in test_features:
-        state_circuit = circuit.assign_parameters({**dict(zip(ml.neural_network.input_params, feature)), **dict(zip(ml.neural_network.weight_params, ml.weights))})
-        test_circuits.append(state_circuit)
 
-    print("Geting data...")
-    if ml_type=="vqc":
-        if backend is not None:
-            num_shots = data.get("num_shots", 1024)
-            sampler.options.default_shots = num_shots
-        job = sampler.run(test_circuits)
+    if ml_type in ["vqc", "vqr"]:
+        test_circuits = []
+        for feature in test_features:
+            state_circuit = circuit.assign_parameters({**dict(zip(ml.neural_network.input_params, feature)), **dict(zip(ml.neural_network.weight_params, ml.weights))})
+            test_circuits.append(state_circuit)
 
-    elif ml_type=="vqr":
-        n_features = data["n_features"]
-        observable = SparsePauliOp.from_list([("Z" * n_features, 1)])
-        pubs = [(tc, observable) for tc in test_circuits]
+        print("Geting data...")
+        if ml_type=="vqc":
+            if backend is not None:
+                num_shots = data.get("num_shots", 1024)
+                sampler.options.default_shots = num_shots
+            job = sampler.run(test_circuits)
+
+        elif ml_type=="vqr":
+            n_features = data["n_features"]
+            observable = SparsePauliOp.from_list([("Z" * n_features, 1)])
+            pubs = [(tc, observable) for tc in test_circuits]
         
-        if backend is not None:
-            prec_val = data.get("num_shots", "0.05")
-            precision = float(prec_val.split(": ")[-1]) if isinstance(prec_val, str) else 0.05
-            estimator.options.default_precision = precision
+            if backend is not None:
+                prec_val = data.get("num_shots", "0.05")
+                precision = float(prec_val.split(": ")[-1]) if isinstance(prec_val, str) else 0.05
+                estimator.options.default_precision = precision
             
-        job = estimator.run(pubs)
+            job = estimator.run(pubs)
     
-    job_id = job.job_id()
+        job_id = job.job_id()
 
-    while job.status().name not in ['DONE', 'CANCELLED', 'ERROR']:
-        print(f"[{time.strftime('%X')}] Job Status: {job.status().name}...")
-        time.sleep(30)
+        while job.status().name not in ['DONE', 'CANCELLED', 'ERROR']:
+            print(f"[{time.strftime('%X')}] Job Status: {job.status().name}...")
+            time.sleep(30)
 
-    batch_results = None
+        batch_results = None
 
-    if job.status().name == 'DONE':
-        print(f"[{time.strftime('%X')}] Job Status: {job.status().name}")
-        batch_results = job.result()
-    else:
-        print(f"Job failed with status: {job.status()}")
+        if job.status().name == 'DONE':
+            print(f"[{time.strftime('%X')}] Job Status: {job.status().name}")
+            batch_results = job.result()
+        else:
+            print(f"Job failed with status: {job.status()}")
 
-    print("Calculating predictions...")
-    if batch_results is None:
-        predictions = ["ERROR_RETRIEVING_RESULTS"] * len(test_features)
-    else:
-        predictions = []
-
-        if ml_type == "vqc":
-            for i in range(len(test_features)):
-                if backend is not None:
-                    counts = batch_results.get_counts(i)
-                else:
-                    data_pr = batch_results[i].data
-                    counts = data_pr.meas.get_counts()
+        print("Calculating predictions...")
+        if batch_results is None:
+            predictions = ["ERROR_RETRIEVING_RESULTS"] * len(test_features)
+        else:
+            predictions = []
+            if ml_type == "vqc":
+                for i in range(len(test_features)):
+                    if backend is not None:
+                        counts = batch_results.get_counts(i)
+                    else:
+                        data_pr = batch_results[i].data
+                        counts = data_pr.meas.get_counts()
             
-                top_bitstring = max(counts, key=counts.get)
-                clean_bitstring = top_bitstring.replace(" ", "") # Good habit to prevent spacing errors
-                predictions.append(ml.neural_network.interpret(int(clean_bitstring, 2)))
+                    top_bitstring = max(counts, key=counts.get)
+                    clean_bitstring = top_bitstring.replace(" ", "") # Good habit to prevent spacing errors
+                    predictions.append(ml.neural_network.interpret(int(clean_bitstring, 2)))
         
-        if ml_type == "vqr":
-            for i in range(len(test_features)):
-                ev = batch_results[i].data.evs
-                val = float(ev) if np.isscalar(ev) else float(ev[0])
-                predictions.append(val)
+            if ml_type == "vqr":
+                for i in range(len(test_features)):
+                    ev = batch_results[i].data.evs
+                    val = float(ev) if np.isscalar(ev) else float(ev[0])
+                    predictions.append(val)
 
-    data["predictions"] = predictions
-    data["job_id"] = str(job_id)
+        data["predictions"] = predictions
+        data["job_id"] = str(job_id)
 
-    with open(f"{folder}/metadata.json", "w") as f:
-        json.dump(data, f, indent=4)
-    print("Predictions successfully saved to metadata.json")
+        with open(f"{folder}/metadata.json", "w") as f:
+            json.dump(data, f, indent=4)
+        print("Predictions successfully saved to metadata.json")
 
+    elif ml_type in ["qsvc", "qsvr"]:
+        print("Calculating kernel predictions...")
+        predictions = ml.predict(test_features)
+        
+        data["predictions"] = predictions.tolist()
+        
+        with open(f"{folder}/metadata.json", "w") as f:
+            json.dump(data, f, indent=4)
+        print("Predictions successfully saved to metadata.json")
+        return # Skip the hardware distribution plotting
+    
     if batch_results is not None:
         print("Generating plot...")
 

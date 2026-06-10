@@ -7,8 +7,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 
 from qiskit.primitives import StatevectorSampler, StatevectorEstimator
 from qiskit_machine_learning.gradients import ParamShiftSamplerGradient, ParamShiftEstimatorGradient    
-from qiskit_machine_learning.algorithms.classifiers import VQC
-from qiskit_machine_learning.algorithms import VQR
+from qiskit_machine_learning.algorithms import VQC, VQR, QSVC, QSVR
 
 def vq_report(folder):
     # files prep
@@ -21,7 +20,11 @@ def vq_report(folder):
     if ml_type == "vqc":
         ml = VQC.from_dill(f"{folder}/{filename}.model")
     elif ml_type == "vqr":
-        ml = VQR.from_dill(f"{folder}/{filename}.model") # dif
+        ml = VQR.from_dill(f"{folder}/{filename}.model")
+    elif ml_type == "qsvc":
+        ml = QSVC.from_dill(f"{folder}/{filename}.model")
+    elif ml_type == "qsvr":
+        ml = QSVR.from_dill(f"{folder}/{filename}.model")
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
@@ -35,16 +38,9 @@ def vq_report(folder):
     if num_rec is not None:
         train_features, train_labels, test_features, test_labels = train_features[:num_rec], train_labels[:num_rec], test_features[:num_rec], test_labels[:num_rec]
     
-    predictions = data.get("predictions", [])
-    if predictions and "ERROR" not in str(predictions[0]):
-        if all(val in [0, 1, 0.0, 1.0] for val in predictions): # check if every single prediction is exactly 0, 1, 0.0, or 1.0
-            predictions = [int(p) for p in predictions]
-        else:
-            predictions = [(1 if p > 0.0 else 0) for p in predictions] # binarizing, decision threshold (for -1,1 set to 0??)
-    
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
-    if ml_type == "vqc":
+    if ml_type in ["vqc", "qsvc", "qsvr"]:
         sampler = StatevectorSampler()
         ml.neural_network.sampler = sampler
         ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
@@ -53,6 +49,11 @@ def vq_report(folder):
         ml.neural_network.estimator = estimator
         ml.neural_network.gradient = ParamShiftEstimatorGradient(estimator=estimator)
 
+    predictions = data.get("predictions", [])
+    if predictions and "ERROR" not in str(predictions[0]):
+        if all(val in [0, 1, 0.0, 1.0] for val in predictions): # check if every single prediction is exactly 0, 1, 0.0, or 1.0
+            predictions = [int(p) for p in predictions]
+
     # report calculations
     if not predictions or "ERROR_RETRIEVING_RESULTS" in predictions:
         test_score, mse_val, mae_val = 0.0, 0.0, 0.0, 0.0, 0.0
@@ -60,9 +61,10 @@ def vq_report(folder):
         cm_text = "N/A: No valid data to display."
         print("No valid predictions found. Skipping metrics calculation.")
     else:
-        if ml_type == "vqr": # regression metrics (how well physical circuit holds ideal values)
+        if ml_type in ["vqr", "qsvr"]: # regression metrics (how well physical circuit holds ideal values)
             mse_val = mean_squared_error(test_labels, predictions)
             mae_val = mean_absolute_error(test_labels, predictions)
+            predictions = [(1 if p > 0.0 else 0) for p in predictions] # binarizing, decision threshold (for -1,1 set to 0)
 
         test_score = accuracy_score(test_labels, predictions) # calculating accuracy
         # calculating cm and scikit report
@@ -76,35 +78,38 @@ Actual Attack (1): {fn:^16} | {tp:^16}
 """
         
     # calculating feature importance
-    sample_fi = test_features[0].reshape(1, -1)
-    _ = ml.neural_network.forward(sample_fi, ml.weights)
-    ml.neural_network.input_gradients = True
-    in_grads, weight_grads = ml.neural_network.backward(sample_fi, ml.weights)
-    
-    encoded_names = np.load(f"dataset/{d_file}/{d_file}_names.npy", allow_pickle=True).tolist()
-    fi_df = pd.DataFrame({
-        'Original Feature': encoded_names,
-        'Importance': np.abs(np.dot(in_grads[0][0], pca_weights).flatten())
-    }).sort_values(by='Importance', ascending=False)
+    if ml_type in ["vqc", "vqr"]:
+        sample_fi = test_features[0].reshape(1, -1)
+        _ = ml.neural_network.forward(sample_fi, ml.weights)
+        ml.neural_network.input_gradients = True
+        in_grads, weight_grads = ml.neural_network.backward(sample_fi, ml.weights)
+        
+        encoded_names = np.load(f"dataset/{d_file}/{d_file}_names.npy", allow_pickle=True).tolist()
+        fi_df = pd.DataFrame({
+            'Original Feature': encoded_names,
+            'Importance': np.abs(np.dot(in_grads[0][0], pca_weights).flatten())
+        }).sort_values(by='Importance', ascending=False)
 
-    fi = fi_df.to_string(
+        fi = fi_df.to_string(
             index=False,                       # Hides the 0, 1, 2 row numbers
             justify='left',                    # Aligns the column headers nicely
             float_format=lambda x: f"{x:.6f}"  # Rounds the importance to 6 decimal places
         )
-
+    else:
+        fi = "N/A: Feature importance via input gradients is not mathematically applicable for Quantum Kernel SVMs."
+ 
     # saving report
     with open(f"{folder}/{filename}_report.txt", "w") as f:
         f.write(f"Model {type(ml).__name__} | Job Id {data.get('job_id', 'N/A')}\n")
         f.write("\n--- Dataset info ---\n")
         f.write(f"Data file used: {d_file}\n")
-        f.write(f"Number of features: {data["n_features"]}\n")
+        f.write(f"Number of features: {data.get('n_features', 'N/A')}\n")
         f.write(f"Number of records: train - {train_features.shape[0]}, test - {test_features.shape[0]}\n")
 
         f.write("\n--- Training info ---\n")
-        f.write(f"Number of classes: {data["num_classes"]}\n")
+        f.write(f"Number of classes: {data.get('num_classes', 'N/A')}\n")
         f.write(f"Training time: {data.get('train_time', 'N/A')} s\n")
-        if ml_type == "vqr":
+        if ml_type in ["vqr", "qsvr"]:
             f.write(f"Mean Squared Error (MSE) on QPU: {mse_val:.4f}\n")
             f.write(f"Mean Absolute Error (MAE) on QPU: {mae_val:.4f}\n")
         f.write(f"Accuracy on QPU: {test_score:.2f}\n")
@@ -120,36 +125,40 @@ Actual Attack (1): {fn:^16} | {tp:^16}
 
         f.write("\n--- Model parameters ---\n")
         f.write(f"Number of qubits: {data.get('num_qubits', 'N/A')}\n")
-        f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji (maxiter from optimalizator)
-        f.write(f"Number of Function Evaluations: {data.get('nfev', 'N/A')}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
-        f.write(f"Loss function type: {data.get('loss_name', 'N/A')}\n") # actual thing in fit_result
-        f.write(f"Loss function value: {data.get('fun', 'N/A')}\n") # najniższa wartość funkcji straty - na jakim poziomie zatrzymał się trening
-        f.write(f"Initial point (starting weights): {data.get('initial_point', 'N/A')}\n")
-        f.write(f"Weights: {data.get('weights', 'N/A')}\n") # optimized weights after the training
-        f.write(f"Final Gradient Magnitude: {data.get('jac', 'N/A')}\n") # if values are exactly zero everywhere right from the start - Barren Plateau
-        f.write(f"Number of Jacobian Evaluations: {data.get('njev', 'N/A')}\n") # how many times the optimizer explicitly stopped to calculate that exact slope (the gradient) during the entire training process - might be very expensive (None for COBYLA)
+        if ml_type in ["vqc", "vqr"]:
+            f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji (maxiter from optimalizator)
+            f.write(f"Number of Function Evaluations: {data.get('nfev', 'N/A')}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
+            f.write(f"Loss function type: {data.get('loss_name', 'N/A')}\n") # actual thing in fit_result
+            f.write(f"Loss function value: {data.get('fun', 'N/A')}\n") # najniższa wartość funkcji straty - na jakim poziomie zatrzymał się trening
+            f.write(f"Initial point (starting weights): {data.get('initial_point', 'N/A')}\n")
+            f.write(f"Weights: {data.get('weights', 'N/A')}\n") # optimized weights after the training
+            f.write(f"Final Gradient Magnitude: {data.get('jac', 'N/A')}\n") # if values are exactly zero everywhere right from the start - Barren Plateau
+            f.write(f"Number of Jacobian Evaluations: {data.get('njev', 'N/A')}\n") # how many times the optimizer explicitly stopped to calculate that exact slope (the gradient) during the entire training process - might be very expensive (None for COBYLA)
 
-        f.write("\n--- Neural network ---\n")
-        f.write(f"Features sent to NN: {data.get('num_inputs', 'N/A')}\n")
-        f.write(f"Number of weights (dimensionality): {data.get('num_weights', 'N/A')}\n") # dimension of a gradient in wchich the minimum of objective function is searched
-        f.write(f"Final probability shape: {data.get('output_shape', 'N/A')}\n") # if it's binary or not (number of classes)
+            f.write("\n--- Neural network ---\n")
+            f.write(f"Features sent to NN: {data.get('num_inputs', 'N/A')}\n")
+            f.write(f"Number of weights (dimensionality): {data.get('num_weights', 'N/A')}\n") # dimension of a gradient in wchich the minimum of objective function is searched
+            f.write(f"Final probability shape: {data.get('output_shape', 'N/A')}\n") # if it's binary or not (number of classes)
 
-        f.write(f"\n--- Optimizer ({data.get('optimizer_name', 'N/A')}) settings ---\n")
-        for key, value in data.get("optimizer_settings", {}).items():
-            f.write(f"{key}: {value}\n")
+            f.write(f"\n--- Optimizer ({data.get('optimizer_name', 'N/A')}) set settings ---\n")
+            for key, value in data.get("optimizer_settings", {}).items():
+                f.write(f"{key}: {value}\n")
+        else: # QSVC/QSVR specific metrics
+            f.write(f"Number of Support Vectors: {data.get('support_vectors', 'N/A')}\n")
+            f.write(f"Kernel Type: FidelityQuantumKernel\n")
 
-        if ml_type == "vqc":
+        if ml_type in ["vqc", "qsvc", "qsvr"]:
             f.write("\n--- Sampler info ---\n")
-            f.write(f"Default shots: {data["num_shots"]}\n")
-            if data["num_shots"] is not None:
-                total_cost = data["nfev"] * data["num_shots"]
+            f.write(f"Default shots: {data['num_shots']}\n")
+            if ml_type == "vqc" and data.get('num_shots') is not None:
+                total_cost = data['nfev'] * data['num_shots']
                 f.write(f"Total computational cost: {total_cost} shots\n")
             else:
                 f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
         
         elif ml_type == "vqr":
             f.write("\n--- Estimator info ---\n") # dif section
-            num_shots = data.get("num_shots", "N/A")
+            num_shots = data.get('num_shots', "N/A")
             f.write(f"Precision Parameter: {num_shots}\n")
             if "Precision" in str(num_shots):
                 f.write(f"Total computational cost: Dynamic shots resolved by Hoeffding inequality based on precision.\n")

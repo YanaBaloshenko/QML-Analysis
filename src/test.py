@@ -1,8 +1,10 @@
 import json
 import numpy as np
 
-with open("results/11052026_2134/metadata.json", "r") as f:
-    data = json.load(f)
+from qiskit_machine_learning.algorithms.classifiers import VQC
 
-sets = np.load(f"dataset/kdd_3.14-scale_2-fpca_onehot-enc/kdd_3.14-scale_2-fpca_onehot-enc.npz")
-print(len(sets["test_features"]))
+ml = VQC.from_dill("results/qpu/vqc/11052026_1149_qpu/vqc_data-kdd_3.14-scale_2-fpca_onehot-enc_backend-garnet_time-11052026_1149.model")
+lr = ml.optimizer.learning_rate
+perturb = ml.optimizer.perturbation
+print("lr: ", lr)
+print("perturb: ", perturb)

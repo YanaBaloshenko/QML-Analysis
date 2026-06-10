@@ -18,39 +18,50 @@ import batch
 def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, num_rec, filename, compiled_base_circuit):
     num_shots = None
     if bcknd != "ideal":
-        if ml_type == "vqc":
+        if ml_type in ["vqc", "qsvc", "qsvr"]: 
             num_shots = primitive.options.default_shots
         elif ml_type == "vqr":
             num_shots = f"Precision: {primitive.options.default_precision}" # vqr has precision instead of num_shots and measures till it achieves it
 
     print("\nSaving data...")
-    with open(f"{folder}/metadata.json", "w") as f:
-        json.dump({
-            "ml_type": ml_type,
-            "train_time": train_time,
-            "n_features": n_features,
-            "nit": int(ml.fit_result.nit),
-            "nfev": int(ml.fit_result.nfev),
-            "fun": float(ml.fit_result.fun),
+    metadata = {
+        "ml_type": ml_type,
+        "train_time": train_time,
+        "n_features": n_features,
+        "d_file": d_file,
+        "num_shots": num_shots,
+        "filename": filename,
+        "num_rec": num_rec,
+        "bcknd": bcknd
+    }
+
+    if ml_type in ["vqc", "vqr"]:
+        metadata.update({
+            "nit": int(ml.fit_result.nit) if ml.fit_result else None,
+            "nfev": int(ml.fit_result.nfev) if ml.fit_result else None,
+            "fun": float(ml.fit_result.fun) if ml.fit_result else None,
             "jac": float(ml.fit_result.jac) if ml.fit_result.jac != None else 0,
             "njev": int(ml.fit_result.njev) if ml.fit_result.njev != None else 0,
             "initial_point": ml.initial_point.tolist() if ml.initial_point is not None else None,
             "optimizer_name": type(ml.optimizer).__name__,
             "optimizer_settings": {k: str(v) for k, v in ml.optimizer.settings.items()},
             "loss_name": type(ml.loss).__name__,
-            "num_qubits": ml.num_qubits,
             "num_classes": ml.num_classes,
-            "objective_func_vals": objective_func_vals,
-            "weights": ml.weights.tolist(),
             "num_inputs": ml.neural_network.num_inputs,
             "num_weights": ml.neural_network.num_weights,
             "output_shape": ml.neural_network.output_shape[0],
-            "d_file": d_file,
-            "num_shots": num_shots,
-            "filename": filename,
-            "num_rec": num_rec,
-            "bcknd": bcknd
-        }, f, indent=4)
+            "num_qubits": ml.num_qubits,
+            "objective_func_vals": objective_func_vals,
+            "weights": ml.weights.tolist() if ml.weights is not None else None
+        })
+    else: # QSVC / QSVR
+        metadata.update({
+            "num_qubits": ml.quantum_kernel.feature_map.num_qubits,
+            "support_vectors": len(ml.support_vectors_) if hasattr(ml, 'support_vectors_') else 0
+        })
+
+    with open(f"{folder}/metadata.json", "w") as f:
+        json.dump(metadata, f, indent=4)
 
     print("Generating plots...")
     if compiled_base_circuit != None:
@@ -64,13 +75,14 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
         print("No hardware backend, skipping layout plot...")
     
     # objective function plot
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (12, 6)
-    plt.title("Objective function value against iteration")
-    plt.xlabel("Iteration")
-    plt.ylabel("Objective function value")
-    plt.plot(range(len(objective_func_vals)), objective_func_vals)
-    plt.savefig(f"{folder}/plots/{filename}_obj.png", bbox_inches="tight", dpi=300)
+    if objective_func_vals:
+        plt.figure()
+        plt.rcParams["figure.figsize"] = (12, 6)
+        plt.title("Objective function value against iteration")
+        plt.xlabel("Iteration")
+        plt.ylabel("Objective function value")
+        plt.plot(range(len(objective_func_vals)), objective_func_vals)
+        plt.savefig(f"{folder}/plots/{filename}_obj.png", bbox_inches="tight", dpi=300)
 
     plt.close('all') # RAM cleaning
 
@@ -84,6 +96,10 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
         ml, pm, primitive, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
     elif ml_type=="vqr":
         ml, pm, primitive, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd, pretrained_weights, folder, filename)
+    elif ml_type=="qsvc":
+        ml, pm, primitive, backend, objective_func_vals = algorithm.qsvc_def(n_features, bcknd, folder, filename)
+    elif ml_type=="qsvr":
+        ml, pm, primitive, backend, objective_func_vals = algorithm.qsvr_def(n_features, bcknd, folder, filename)
     
     start = time.time()
     ml.fit(train_features, train_labels)
@@ -98,7 +114,10 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
         np.save(f"{folder}/pretrained_weights.npy", pretrained_weights)
 
     print("Preparing base circuit...")
-    base_circuit = ml.neural_network.circuit
+    if ml_type in ["vqc", "vqr"]:
+        base_circuit = ml.neural_network.circuit
+    else:
+        base_circuit = ml.quantum_kernel.feature_map
     compiled_base_circuit = pm.run(base_circuit)
     with open(f"{folder}/base-circuit.qpy", "wb") as f:
         qpy.dump(compiled_base_circuit, f)
@@ -155,10 +174,9 @@ def main():
         print("Starting training...")
         training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
 
-    elif ml_type=="qsvc":
-        a = algorithm.qsvc_def()
-    elif ml_type=="qsvr":
-        a = algorithm.qsvr_def()
+    elif ml_type=="qsvc" or ml_type=="qsvr":
+        print("Starting training...")
+        training(ml_type, bcknd, None, train_features, train_labels, n_features, num_rec, d_file, folder, filename, False)
     else:
         raise ValueError("No such model defined.")    
     
