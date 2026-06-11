@@ -1,60 +1,61 @@
-import os
-import re
-import pandas as pd
+import numpy as np
+import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-def parse_result_file(file_path):
-    with open(file_path, 'r') as f:
-        content = f.read()
+def qsvc_plots(results_dict):
+    sorted_items = sorted(results_dict.items()) # Sorts the dictionary by keys (C values) in ascending order
+    c_values, accuracies = zip(*sorted_items) # Unpack the sorted items into two separate lists
+    c_labels = [str(c) for c in c_values]
 
-    record_match = re.search(r"Number of records: train - (\d+), test - (\d+)", content)
-    feat_match = re.search(r"Number of features: (\d+)", content)
-    acc_match = re.search(r"Accuracy(?: on QPU)?: ([\d\.]+)", content)
-    
-    if not all([record_match, feat_match, acc_match]):
-        return None
-    
-    train_size = int(record_match.group(1))
-    test_size = int(record_match.group(2))
-    total_size = train_size + test_size
-    features = int(feat_match.group(1))
-    accuracy = float(acc_match.group(1))
-    
-    return {
-        'dataset_size': total_size,
-        'features': features,
-        'accuracy': accuracy
-    }
+    plt.figure(figsize=(8, 5))
+    plt.plot(c_labels, accuracies, marker='o', linestyle='-', color='#1f77b4', linewidth=2, markersize=8)
+    plt.xlabel('Regularization Parameter (C)', fontsize=12, fontweight='bold')
+    plt.ylabel('Test Accuracy', fontsize=12, fontweight='bold')
+    plt.title('QSVC Performance based on Regularization parameter', fontsize=14)
+    plt.grid(True, which="both", linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("results/ideal/plots/qsvc_accuracy_vs_c_dict.png", dpi=300)
+    plt.close()
 
-def collect_all_results(root_folder):
-    data = []
-    for root, dirs, files in os.walk(root_folder): # os.walk travels through all subdirectories
-        for file in files:
-            if file.endswith("_report.txt"):
-                file_path = os.path.join(root, file)
-                parsed = parse_result_file(file_path)
+def vqc_plots():
+    runs = ['Run 1', 'Run 2', 'Run 3', 'Run 4', 'Run 5']
+    times = [324.62, 322.18, 324.9, 324.06, 327.74]
+    accuracies = [0.53, 0.67, 0.75, 0.81, 0.61]
+    combined_labels = [f"{runs[i]}\n({times[i]}s)" for i in range(len(runs))] # combine the run name and time into a multi-line label
 
-                if parsed:
-                    data.append(parsed)
-    return pd.DataFrame(data)
-
-def plot(df, ml):
-    heatmap_data = df.pivot_table(index='features', columns='dataset_size', values='accuracy')
-    plt.figure(figsize=(10, 6))
-    sns.heatmap(heatmap_data, annot=True, cmap='viridis')
-    plt.title('Accuracy Heatmap (Features vs Dataset Size)')
-    plt.savefig(f"results/ideal/plots/{ml}_heatmap.png", bbox_inches="tight", dpi=300)
-    plt.close('all')
+    plt.figure(figsize=(8, 5))
+    plt.plot(combined_labels, accuracies, marker='o', linestyle='-', color='#1f77b4', linewidth=2, markersize=8)
+    unique_accuracies = sorted(list(set(accuracies)))
+    plt.yticks(unique_accuracies)
+    plt.xlabel('Execution Instance & Training Time', fontsize=12, fontweight='bold')
+    plt.ylabel('Test Accuracy', fontsize=12, fontweight='bold')
+    plt.title('VQR: Test Accuracy per Execution for RealAmplitudes Ansatz', fontsize=14)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.ylim(min(accuracies) - 0.02, max(accuracies) + 0.02)
+    plt.tight_layout()
+    plt.savefig("results/ideal/vqc/plots/vqc_accuracy-time_spsa.png", dpi=300)
+    plt.close()
 
 def main():
-    ml = 'vqc' # ['vqc', 'vqr', 'qsvc', 'qsvr']
-    df = collect_all_results(f'results/ideal/{ml}')
-    df_best = df.loc[df.groupby(['features', 'dataset_size'])['accuracy'].idxmax()]
+    qsvc_dict = {
+        0.1: 0.69,
+        0.3: 0.69,
+        0.4: 0.75,
+        0.5: 0.81,
+        0.6: 0.78,
+        0.7: 0.75,
+        0.8: 0.75,
+        0.9: 0.69,
+        1.0: 0.69,
+        10.0: 0.67,
+        100.0: 0.67
+    } # format: {C_value: accuracy}
+    #qsvc_plots(qsvc_dict)
 
-    plot(df_best, ml)
+    vqc_plots()
+    
 
 if __name__ == "__main__":
     main()

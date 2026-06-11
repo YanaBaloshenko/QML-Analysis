@@ -52,7 +52,7 @@ def train(ml_type, n_f, size):
     
     ################## training ##################
     if ml_type == "svc":
-        ml = SVC(max_iter=10000, cache_size=2000)
+        ml = SVC(max_iter=10000, cache_size=2000, class_weight='balanced', C=0.5)
     elif ml_type == "svr":
         ml = SVR(max_iter=10000, cache_size=2000)
     elif ml_type == "mlpr":
@@ -107,7 +107,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}"""
     fi_df = calculate_feature_importance(ml, test_features, test_labels, pca_weights, encoded_names)
     fi = fi_df.to_string(index=False, justify='left', float_format=lambda x: f"{x:.6f}")
     
-    print("Saving report...")
+    print(f"Saving report to {file_path}...")
     with open(file_path, "w") as f:
         f.write(f"Model {type(ml).__name__}\n")
         f.write("\n--- Dataset info ---\n")
@@ -155,10 +155,12 @@ def main():
 
     ml_type = ["svc", "svr", "mlpr"]
 
-    for ml in ml_type:
-        for n in n_f:
-            for s in size:
-                train(ml, n, s)
+    #for ml in ml_type:
+        #for n in n_f:
+            #for s in size:
+                #train(ml, n, s)
+    
+    train("svc", 5, 240)
 
 if __name__ == "__main__":
     main()

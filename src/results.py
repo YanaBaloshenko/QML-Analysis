@@ -32,18 +32,16 @@ def report(folder):
     train_labels = sets['train_labels']
     test_features = sets['test_features']
     test_labels = sets['test_labels']
-
-    num_rec = data.get('num_rec', None)
-    if num_rec is not None:
-        train_features, train_labels, test_features, test_labels = train_features[:num_rec], train_labels[:num_rec], test_features[:num_rec], test_labels[:num_rec]
     
     pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
 
     if ml_type == "vqc":
+        og_sampler = ml.neural_network.sampler
         sampler = StatevectorSampler()
         ml.neural_network.sampler = sampler
         ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
     if ml_type == "vqr":
+        og_estimator = ml.neural_network.estimator
         estimator = StatevectorEstimator()
         ml.neural_network.estimator = estimator
         ml.neural_network.gradient = ParamShiftEstimatorGradient(estimator=estimator)
@@ -67,8 +65,7 @@ def report(folder):
             mae_val = mean_absolute_error(test_labels, predictions)
             predictions = [(1 if p > 0.0 else 0) for p in predictions] # binarizing, decision threshold (for -1,1 set to 0)
 
-        test_score = accuracy_score(test_labels, predictions) # calculating accuracy
-        # calculating cm and scikit report
+        test_score = accuracy_score(test_labels, predictions)
         report = classification_report(test_labels, predictions, target_names=["Normal (0)", "Attack (1)"], zero_division=0.0)
         cm = confusion_matrix(test_labels, predictions)
         tn, fp, fn, tp = cm.ravel()
@@ -98,6 +95,11 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         )
     else:
         fi = "N/A: Feature importance via input gradients is not mathematically applicable for Quantum Kernel SVMs."
+
+    if data['bcknd'] == "ideal":
+        train_score = ml.score(train_features, train_labels)
+    else:
+        train_score = None
  
     # saving report
     with open(f"{folder}/{filename}_report.txt", "w") as f:
@@ -113,6 +115,8 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         if ml_type in ["vqr", "qsvr"]:
             f.write(f"Mean Squared Error (MSE): {mse_val:.4f}\n")
             f.write(f"Mean Absolute Error (MAE): {mae_val:.4f}\n")
+        if train_score != None:
+            f.write(f"Accuracy on training set: {train_score:.2f}\n")
         f.write(f"Accuracy: {test_score:.2f}\n")
         
         f.write("\n--- Confusion matrix (class 0 - normal, class 1 - attack) ---\n")
@@ -146,7 +150,11 @@ Actual Attack (1): {fn:^16} | {tp:^16}
                 f.write(f"{key}: {value}\n")
         else: # QSVC/QSVR specific metrics
             f.write(f"Number of Support Vectors: {data.get('support_vectors', 'N/A')}\n")
-            f.write(f"Kernel Type: FidelityQuantumKernel\n")
+            options = data.get('options', None)
+            if options != None:
+                f.write("Model options:\n")
+                for option in options:
+                    f.write(f"{option}\n")
 
         if ml_type == "vqc":
             f.write("\n--- Sampler info ---\n")

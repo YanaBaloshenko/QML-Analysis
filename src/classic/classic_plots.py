@@ -50,7 +50,7 @@ def plot(df, ml):
     plt.close('all')
 
 def main():
-    ml = 'svr' # ['svc', 'svr', 'mlpr']
+    ml = 'mlpr' # ['svc', 'svr', 'mlpr']
     df = collect_all_results(f'results/classic/{ml}')
 
     plot(df, ml)

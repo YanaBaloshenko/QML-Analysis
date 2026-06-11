@@ -22,8 +22,8 @@ def prepare_data(df_train, df_test, norm_range, n_features, filename):
     encoded_feature_names = x_train_enc.columns.tolist()
     np.save(f"{filename}_names.npy", encoded_feature_names)
 
-    print(f"Normalization for range (0, {norm_range:.2f})...")
-    scaler = MinMaxScaler(feature_range=(0, norm_range))
+    print(f"Normalization...")
+    scaler = MinMaxScaler()
     x_train_scaled = scaler.fit_transform(x_train_enc)
     x_test_scaled = scaler.transform(x_test_enc)
 
@@ -50,11 +50,17 @@ def prepare_data(df_train, df_test, norm_range, n_features, filename):
 
 def main():
     norm_range = np.pi # for normalization
-    n_features = [5, 6, 7, 8, 9, 10, 11, 12] # for pca
-    size = 300
+    n_features = 5 # for pca
+    size = 240
 
     trn_size = math.ceil((size*85)/100) # 85:15 train to test
     tst_size = size-trn_size
+    name = f"kdd_{norm_range:.2f}-scale_{n_features}-fpca_onehot-enc_{size}"
+    f = f"dataset/{n_features}"
+    os.makedirs(f, exist_ok=True)
+    folder = f"{f}/{name}"
+    os.makedirs(folder, exist_ok=True)
+    filename = f"{folder}/{name}"
 
     print("Reading files...")
     df_train = pd.read_csv("dataset/nsl-kdd/KDDTrain+.txt") # reading files
@@ -70,12 +76,7 @@ def main():
     _, df_train = train_test_split(df_train, test_size=trn_size, stratify=df_train['label'], random_state=42)
     _, df_test = train_test_split(df_test, test_size=tst_size, stratify=df_test['label'], random_state=42)
 
-    for n in n_features:
-        name = f"kdd_{norm_range:.2f}-scale_{n}-fpca_onehot-enc_{size}"
-        folder = f"dataset/{name}"
-        os.makedirs(folder, exist_ok=True)
-        filename = f"{folder}/{name}"
-        prepare_data(df_train, df_test, norm_range, n, filename)
+    prepare_data(df_train, df_test, norm_range, n_features, filename)
 
 if __name__ == "__main__":
     main()

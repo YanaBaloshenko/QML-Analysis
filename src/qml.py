@@ -1,5 +1,3 @@
-from ast import If
-
 import numpy as np
 import datetime
 import time
@@ -15,9 +13,9 @@ from qiskit_machine_learning.algorithms.classifiers import VQC
 
 import algorithm
 import results
-import batch
+import predict
 
-def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, filename, compiled_base_circuit):
+def results_save(ml_type, ml, backend, primitive, bcknd, o_list, folder, train_time, n_features, d_file, filename, compiled_base_circuit):
     num_shots = None
     if bcknd != "ideal":
         if ml_type in ["vqc", "qsvc", "qsvr"]: 
@@ -38,11 +36,11 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
 
     if ml_type in ["vqc", "vqr"]:
         metadata.update({
-            "nit": int(ml.fit_result.nit) if ml.fit_result else None,
-            "nfev": int(ml.fit_result.nfev) if ml.fit_result else None,
-            "fun": float(ml.fit_result.fun) if ml.fit_result else None,
-            "jac": float(ml.fit_result.jac) if ml.fit_result.jac is not None else 0,
-            "njev": int(ml.fit_result.njev) if ml.fit_result.njev is not None else 0,
+            "nit": int(ml.fit_result.nit) if ml.fit_result and ml.fit_result.nit is not None else None,
+            "nfev": int(ml.fit_result.nfev) if ml.fit_result and ml.fit_result.nfev is not None else None,
+            "fun": float(ml.fit_result.fun) if ml.fit_result and ml.fit_result.fun is not None else None,
+            "jac": float(ml.fit_result.jac) if ml.fit_result and ml.fit_result.jac is not None else 0,
+            "njev": int(ml.fit_result.njev) if ml.fit_result and ml.fit_result.njev is not None else 0,
             "initial_point": ml.initial_point.tolist() if ml.initial_point is not None else None,
             "optimizer_name": type(ml.optimizer).__name__,
             "optimizer_settings": {k: str(v) for k, v in ml.optimizer.settings.items()},
@@ -51,13 +49,14 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
             "num_weights": ml.neural_network.num_weights,
             "output_shape": ml.neural_network.output_shape[0],
             "num_qubits": ml.num_qubits,
-            "objective_func_vals": objective_func_vals,
+            "objective_func_vals": o_list,
             "weights": ml.weights.tolist() if ml.weights is not None else None
         })
     else: # QSVC / QSVR
         metadata.update({
             "num_qubits": ml.quantum_kernel.feature_map.num_qubits,
-            "support_vectors": len(ml.support_vectors_) if hasattr(ml, 'support_vectors_') else 0
+            "support_vectors": len(ml.support_vectors_) if hasattr(ml, 'support_vectors_') else 0,
+            "options": o_list
         })
 
     with open(f"{folder}/metadata.json", "w") as f:
@@ -75,30 +74,30 @@ def results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, fo
         print("No hardware backend, skipping layout plot...")
     
     # objective function plot
-    if objective_func_vals:
+    if ml_type in ["vqc", "vqr"] and o_list:
         plt.figure()
         plt.rcParams["figure.figsize"] = (12, 6)
         plt.title("Objective function value against iteration")
         plt.xlabel("Iteration")
         plt.ylabel("Objective function value")
-        plt.plot(range(len(objective_func_vals)), objective_func_vals)
-        plt.savefig(f"{folder}/plots/{filename}_obj.png", bbox_inches="tight", dpi=300)
+        plt.plot(range(len(o_list)), o_list)
+        plt.savefig(f"{folder}/{filename}_obj.png", bbox_inches="tight", dpi=300)
 
     plt.close('all') # RAM cleaning
 
     if bcknd == "ideal":
-        batch.batch_results(folder)
+        predict.predict(folder)
         results.report(folder)
 
 def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n_features, d_file, folder, filename, pre_t):
     if ml_type=="vqc":
-        ml, pm, primitive, backend, objective_func_vals = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
+        ml, pm, primitive, backend, o_list = algorithm.vqc_def(n_features, bcknd, pretrained_weights, folder, filename)
     elif ml_type=="vqr":
-        ml, pm, primitive, backend, objective_func_vals = algorithm.vqr_def(n_features, bcknd, pretrained_weights, folder, filename)
+        ml, pm, primitive, backend, o_list = algorithm.vqr_def(n_features, bcknd, pretrained_weights, folder, filename)
     elif ml_type=="qsvc":
-        ml, pm, primitive, backend, objective_func_vals = algorithm.qsvc_def(n_features, bcknd, folder, filename)
+        ml, pm, primitive, backend, o_list = algorithm.qsvc_def(n_features, bcknd, folder, filename)
     elif ml_type=="qsvr":
-        ml, pm, primitive, backend, objective_func_vals = algorithm.qsvr_def(n_features, bcknd, folder, filename)
+        ml, pm, primitive, backend, o_list = algorithm.qsvr_def(n_features, bcknd, folder, filename)
     
     start = time.time()
     ml.fit(train_features, train_labels)
@@ -121,12 +120,11 @@ def training(ml_type, bcknd, pretrained_weights, train_features, train_labels, n
     else:
         compiled_base_circuit = None
 
-    results_save(ml_type, ml, backend, primitive, bcknd, objective_func_vals, folder, train_time, n_features, d_file, filename, compiled_base_circuit)
+    results_save(ml_type, ml, backend, primitive, bcknd, o_list, folder, train_time, n_features, d_file, filename, compiled_base_circuit)
 
-def prep(ml_type, bcknd, d_size, d_n):
-    d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
+def prep(ml_type, bcknd, d_file):
     d_path = f"dataset/{d_file}"
-    date = datetime.datetime.now().strftime("%d%m%Y_%H%M")
+    date = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     if bcknd == "ideal":
         r_folder = f"results/ideal/{ml_type}"
     else:
@@ -144,9 +142,7 @@ def prep(ml_type, bcknd, d_size, d_n):
     ################## data read ##################
     data = np.load(f"{d_path}/{d_file}.npz")
     train_features = data['train_features']
-    test_features = data['test_features']
     train_labels = data['train_labels']
-    test_labels = data['test_labels']
     n_features = train_features.shape[1]
 
     ################## training and saving results ##################
@@ -169,11 +165,13 @@ def prep(ml_type, bcknd, d_size, d_n):
 
 def main():
     bcknd = "ideal"
-    ml_type = "vqr" # ["vqc", "vqr", "qsvc", "qsvr"]
+    ml_type = "qsvc" # ["vqc", "vqr", "qsvc", "qsvr"]
     d_n = 5
     d_size = 240
 
-    prep(ml_type, bcknd, d_size, d_n)
+    d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
+
+    prep(ml_type, bcknd, d_file)
     
 if __name__ == "__main__":
     main()

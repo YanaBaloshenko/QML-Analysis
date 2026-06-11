@@ -1,6 +1,9 @@
 import os
 import numpy as np
 from dotenv import load_dotenv
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 
 from iqm import qiskit_iqm
 from iqm.qiskit_iqm.fake_backends.fake_garnet import IQMFakeGarnet
@@ -9,8 +12,9 @@ from qiskit.primitives import StatevectorSampler, BackendSamplerV2
 from qiskit.primitives import StatevectorEstimator, BackendEstimatorV2
 from qiskit.quantum_info import SparsePauliOp
 
-from qiskit.circuit.library import zz_feature_map
-from qiskit.circuit.library import real_amplitudes
+from qiskit_machine_learning.utils import algorithm_globals
+
+from qiskit.circuit.library import zz_feature_map, real_amplitudes, efficient_su2
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 
 from qiskit_machine_learning.optimizers import COBYLA
@@ -64,7 +68,7 @@ def backend_def(bcknd):
     elif bcknd == "sirius" or bcknd == "garnet" or bcknd == "emerald":
         backend = IQMProvider(iqm_link, quantum_computer=bcknd).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
         
-        estimator = BackendEstimatorV2(backend=backend) # !!!!!!!!!!!!!!!!!!!!!! check options
+        estimator = BackendEstimatorV2(backend=backend)
         estimator.options.default_precision = 0.05 # 0.05 is a sweet spot? - it's 400 shots per circuit (n = 1/precision^2)
         estimator.options.resilience_level = 1
         
@@ -77,22 +81,23 @@ def backend_def(bcknd):
 
 def vqc_def(n_features, bcknd, initial_point, folder, file_name):
     os.makedirs(folder, exist_ok=True)
-    os.makedirs(f"{folder}/plots", exist_ok=True)
     os.makedirs(f"{folder}/checkpoints", exist_ok=True)
 
     sampler, _, backend = backend_def(bcknd)
-    feature_map = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear') # feature map doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.ZZFeatureMap.html
-    ansatz = real_amplitudes(num_qubits=n_features, reps=1, entanglement='linear') # ansatz doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.RealAmplitudes.html
-    if hasattr(backend, 'target'):
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target) # transpilators docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/transpiler
-    else:
-        pm = generate_preset_pass_manager(optimization_level=2) # for ideal backend, no need to specify target as it doesn't have any constraints on gates or connectivity
+    fm_reps = 1
+    ansatz_reps = 3
 
     if bcknd == "ideal":
-        optimizer = SPSA(maxiter=50)
+        optimizer = SPSA(maxiter=100)
+        pm = None
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps)
+        ansatz = efficient_su2(num_qubits=n_features, reps=ansatz_reps)
     else:
         optimizer = spsa
-
+        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target) # transpilators docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/transpiler
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear') # feature map doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.ZZFeatureMap.html
+        ansatz = real_amplitudes(num_qubits=n_features, reps=ansatz_reps, entanglement='linear') # ansatz doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.RealAmplitudes.html
+        
     custom_callback = get_callback(folder, file_name)
 
     print("Defining VQC...")
@@ -111,10 +116,11 @@ def vqc_def(n_features, bcknd, initial_point, folder, file_name):
         # output_shape (default - 2) - for the underlying neural network generally equals to number of classes
     )
 
-    # saving plots
-    vqc.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
-    vqc.ansatz.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_ansatz.png", dpi=300, bbox_inches='tight')
-    vqc.circuit.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_complete-circuit.png", dpi=300, bbox_inches='tight')
+    ansatz_fig = vqc.ansatz.draw(output='mpl')
+    ansatz_name = vqc.ansatz.name
+    ansatz_fig.suptitle(f"Ansatz: {ansatz_name} | Reps: {ansatz_reps}", fontsize=14, y=1.05)
+    ansatz_fig.savefig(f"{folder}/{file_name}_{ansatz_name}-ansatz.png", dpi=300, bbox_inches='tight')
+    plt.close(ansatz_fig)
 
     return vqc, pm, sampler, backend, objective_func_vals
 
@@ -123,17 +129,20 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
     os.makedirs(f"{folder}/plots", exist_ok=True)
     os.makedirs(f"{folder}/checkpoints", exist_ok=True)
 
-    _, estimator, backend = backend_def(bcknd) 
+    _, estimator, backend = backend_def(bcknd)
+    fm_reps = 1
+    ansatz_reps = 3
 
     if bcknd == "ideal":
-        optimizer = SPSA(maxiter=50)
+        optimizer = SPSA(maxiter=100)
         pm = None
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps)
+        ansatz = efficient_su2(num_qubits=n_features, reps=ansatz_reps)
     else:
         optimizer = spsa
         pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-
-    feature_map = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
-    ansatz = real_amplitudes(num_qubits=n_features, reps=1, entanglement='linear')
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear')
+        ansatz = real_amplitudes(num_qubits=n_features, reps=ansatz_reps, entanglement='linear')
     
     observable = SparsePauliOp.from_list([("Z" * n_features, 1)]) # observable !!!!!!!!!!!!!!!!! check # the result would be in [-1, 1]
 
@@ -154,61 +163,62 @@ def vqr_def(n_features, bcknd, initial_point, folder, file_name):
         pass_manager=pm
     )
 
-    vqr.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
-    vqr.ansatz.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_ansatz.png", dpi=300, bbox_inches='tight')
+    ansatz_fig = vqr.ansatz.draw(output='mpl')
+    ansatz_name = vqr.ansatz.name
+    ansatz_fig.suptitle(f"Ansatz: {ansatz_name} | Reps: {ansatz_reps}", fontsize=14, y=1.05)
+    ansatz_fig.savefig(f"{folder}/plots/{file_name}_{ansatz_name}-ansatz.png", dpi=300, bbox_inches='tight')
+    plt.close(ansatz_fig)
 
     return vqr, pm, estimator, backend, objective_func_vals
 
 def qsvc_def(n_features, bcknd, folder, file_name):
     os.makedirs(folder, exist_ok=True)
-    os.makedirs(f"{folder}/plots", exist_ok=True)
 
     sampler, _, backend = backend_def(bcknd)
-    f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
-
-    if hasattr(backend, 'target'):
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-    else:
-        pm = generate_preset_pass_manager(optimization_level=2)
-
-    feature_map = pm.run(f_m)
-
     fidelity = ComputeUncompute(sampler=sampler)
+    
     if bcknd == "ideal":
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
+        pm = None
         qkernel = FidelityStatevectorKernel(feature_map=feature_map)
     else:
+        f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
+        if hasattr(backend, 'target'):
+            pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
+        else:
+            pm = generate_preset_pass_manager(optimization_level=2)
+        feature_map = pm.run(f_m)
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
     print("Defining QSVC...")
-    qsvc = QSVC(quantum_kernel=qkernel)
+    qsvc = QSVC(quantum_kernel=qkernel, class_weight='balanced', C=0.9)
 
-    qkernel.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
+    options = ["class_weight='balanced'", "C=0.9"]
 
-    return qsvc, pm, sampler, backend, [] # Empty list for objective func vals
+    return qsvc, pm, sampler, backend, options
 
 def qsvr_def(n_features, bcknd, folder, file_name):
     os.makedirs(folder, exist_ok=True)
-    os.makedirs(f"{folder}/plots", exist_ok=True)
 
     sampler, _, backend = backend_def(bcknd)
-    f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
-
-    if hasattr(backend, 'target'):
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-    else:
-        pm = generate_preset_pass_manager(optimization_level=2)
-
-    feature_map = pm.run(f_m)
-
     fidelity = ComputeUncompute(sampler=sampler)
+
     if bcknd == "ideal":
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
+        pm = None
         qkernel = FidelityStatevectorKernel(feature_map=feature_map)
     else:
+        f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
+        if hasattr(backend, 'target'):
+            pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
+        else:
+            pm = generate_preset_pass_manager(optimization_level=2)
+        feature_map = pm.run(f_m)
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
     print("Defining QSVR...")
-    qsvr = QSVR(quantum_kernel=qkernel)
+    qsvr = QSVR(quantum_kernel=qkernel, epsilon=0.5)
 
-    qkernel.feature_map.draw(output='mpl').savefig(f"{folder}/plots/{file_name}_featuremap.png", dpi=300, bbox_inches='tight')
+    options = ["epsilon=0.5"]
 
-    return qsvr, pm, sampler, backend, []
+    return qsvr, pm, sampler, backend, options
