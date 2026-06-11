@@ -1,0 +1,140 @@
+Model SVC
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_11-fpca_onehot-enc_280
+Number of features: 11
+Number of records: train - 238, test - 42
+
+--- Training info ---
+Training time: 0.0010406970977783203 s
+Inference time for 42 records: 0.0000 s
+Number of iterations for convergance: 94
+Models complexity (Number of Support Vectors): 49
+Accuracy: 0.7143
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        17        |        1        
+Actual Attack (1):        11        |        13       
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.61      0.94      0.74        18
+  Attack (1)       0.93      0.54      0.68        24
+
+    accuracy                           0.71        42
+   macro avg       0.77      0.74      0.71        42
+weighted avg       0.79      0.71      0.71        42
+
+
+--- Feature Importance ---
+Original Feature             Importance
+               service_http 0.047207   
+     dst_host_same_srv_rate 0.043109   
+         dst_host_srv_count 0.036850   
+             dst_host_count 0.030878   
+              same_srv_rate 0.029251   
+       dst_host_serror_rate 0.027575   
+                serror_rate 0.024765   
+            srv_serror_rate 0.024751   
+   dst_host_srv_serror_rate 0.024601   
+                    flag_S0 0.024083   
+                    flag_SF 0.023716   
+                  logged_in 0.020907   
+         protocol_type_icmp 0.020621   
+         srv_diff_host_rate 0.018749   
+           service_ftp_data 0.018267   
+          protocol_type_udp 0.015581   
+              service_eco_i 0.010822   
+              service_ecr_i 0.009577   
+            service_private 0.009319   
+     dst_host_diff_srv_rate 0.008934   
+              service_other 0.008583   
+           service_domain_u 0.007615   
+              diff_srv_rate 0.006934   
+dst_host_same_src_port_rate 0.006500   
+dst_host_srv_diff_host_rate 0.006401   
+               service_smtp 0.005479   
+          protocol_type_tcp 0.005040   
+                  srv_count 0.005039   
+                      count 0.003729   
+   dst_host_srv_rerror_rate 0.002565   
+             service_telnet 0.001917   
+                   flag_REJ 0.001542   
+                  src_bytes 0.001503   
+                rerror_rate 0.001379   
+                service_ftp 0.001327   
+            srv_rerror_rate 0.001287   
+                        hot 0.001143   
+              service_imap4 0.001108   
+                service_ctf 0.001055   
+               service_auth 0.000978   
+         num_file_creations 0.000956   
+               service_exec 0.000884   
+                service_efs 0.000865   
+               service_uucp 0.000856   
+                   num_root 0.000810   
+             service_gopher 0.000803   
+          service_uucp_path 0.000792   
+               service_name 0.000767   
+                    flag_S1 0.000727   
+             service_sunrpc 0.000698   
+            num_compromised 0.000672   
+               su_attempted 0.000657   
+          num_failed_logins 0.000657   
+              service_ntp_u 0.000639   
+                  dst_bytes 0.000620   
+                 root_shell 0.000606   
+                   duration 0.000588   
+             is_guest_login 0.000572   
+              service_whois 0.000553   
+               service_ldap 0.000486   
+             service_finger 0.000482   
+            service_courier 0.000444   
+                service_mtp 0.000433   
+              service_login 0.000426   
+               service_link 0.000382   
+            service_daytime 0.000381   
+                service_bgp 0.000376   
+             service_domain 0.000372   
+              service_vmnet 0.000370   
+        service_netbios_ssn 0.000364   
+        service_netbios_dgm 0.000351   
+                service_ssh 0.000305   
+             wrong_fragment 0.000277   
+                 num_shells 0.000275   
+                  flag_RSTO 0.000226   
+              service_urp_i 0.000222   
+                    flag_SH 0.000173   
+            service_discard 0.000151   
+                  flag_RSTR 0.000049   
+       dst_host_rerror_rate 0.000008   
+                       land 0.000000   
+                     urgent 0.000000   
+              is_host_login 0.000000   
+           num_access_files 0.000000   
+          num_outbound_cmds 0.000000   
+
+--- Model Architecture & Parameters ---
+Kernel type: rbf
+Gamma parameter: 0.027212685658035585
+Number of Support Vectors: 49
+Support Vector dimensions: (49, 11)
+
+--- Optimizer (SVC) Settings ---
+C: 1.0
+break_ties: False
+cache_size: 2000
+class_weight: None
+coef0: 0.0
+decision_function_shape: ovr
+degree: 3
+gamma: scale
+kernel: rbf
+max_iter: 10000
+probability: False
+random_state: None
+shrinking: True
+tol: 0.001
+verbose: False

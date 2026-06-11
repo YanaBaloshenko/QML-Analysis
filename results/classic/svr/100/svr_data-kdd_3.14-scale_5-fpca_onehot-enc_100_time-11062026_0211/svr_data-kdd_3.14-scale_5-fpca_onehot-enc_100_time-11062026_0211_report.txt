@@ -1,0 +1,121 @@
+Model SVR
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_5-fpca_onehot-enc_100
+Number of features: 5
+Number of records: train - 85, test - 15
+
+--- Training info ---
+Training time: 0.0 s
+Inference time for 15 records: 0.0000 s
+Number of iterations for convergance: 37
+Models complexity (Number of Support Vectors): 16
+Accuracy: 0.4667
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        5         |        1        
+Actual Attack (1):        7         |        2        
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.42      0.83      0.56         6
+  Attack (1)       0.67      0.22      0.33         9
+
+    accuracy                           0.47        15
+   macro avg       0.54      0.53      0.44        15
+weighted avg       0.57      0.47      0.42        15
+
+
+--- Feature Importance ---
+Original Feature             Importance
+                  logged_in 0.134291   
+                    flag_SF 0.109104   
+              same_srv_rate 0.108963   
+   dst_host_srv_serror_rate 0.106986   
+            srv_serror_rate 0.106138   
+            service_private 0.105988   
+                serror_rate 0.105764   
+             dst_host_count 0.104423   
+       dst_host_serror_rate 0.102020   
+                    flag_S0 0.101059   
+     dst_host_same_srv_rate 0.084086   
+         dst_host_srv_count 0.079945   
+               service_http 0.061577   
+         srv_diff_host_rate 0.053765   
+               service_smtp 0.053437   
+                      count 0.036941   
+          protocol_type_tcp 0.032266   
+          protocol_type_udp 0.028625   
+                  src_bytes 0.023152   
+             service_telnet 0.022046   
+       dst_host_rerror_rate 0.014920   
+           service_ftp_data 0.014313   
+                  dst_bytes 0.013170   
+     dst_host_diff_srv_rate 0.011933   
+dst_host_same_src_port_rate 0.011469   
+              diff_srv_rate 0.009962   
+           service_domain_u 0.008840   
+                        hot 0.008516   
+             wrong_fragment 0.008345   
+         num_file_creations 0.007871   
+                  srv_count 0.007395   
+                  flag_RSTO 0.007096   
+                   flag_REJ 0.006087   
+                    flag_SH 0.005269   
+dst_host_srv_diff_host_rate 0.003946   
+                  flag_RSTR 0.003786   
+                service_ctf 0.003764   
+              service_ecr_i 0.003642   
+         protocol_type_icmp 0.003642   
+              service_imap4 0.003617   
+                rerror_rate 0.003076   
+            srv_rerror_rate 0.002777   
+              service_ntp_u 0.002132   
+               service_name 0.002038   
+                service_mtp 0.002035   
+        service_netbios_dgm 0.002022   
+        service_netbios_ssn 0.002002   
+                service_bgp 0.001976   
+          service_uucp_path 0.001929   
+                service_efs 0.001909   
+              service_vmnet 0.001902   
+            service_courier 0.001856   
+               service_exec 0.001840   
+               service_uucp 0.001743   
+              service_other 0.001271   
+               service_auth 0.000869   
+                   duration 0.000726   
+   dst_host_srv_rerror_rate 0.000624   
+                     urgent 0.000000   
+          num_failed_logins 0.000000   
+            num_compromised 0.000000   
+                       land 0.000000   
+               su_attempted 0.000000   
+                 root_shell 0.000000   
+                   num_root 0.000000   
+                 num_shells 0.000000   
+          num_outbound_cmds 0.000000   
+              is_host_login 0.000000   
+             is_guest_login 0.000000   
+           num_access_files 0.000000   
+
+--- Model Architecture & Parameters ---
+Kernel type: rbf
+Gamma parameter: 0.030251428141371866
+Number of Support Vectors: 16
+Support Vector dimensions: (16, 5)
+
+--- Optimizer (SVR) Settings ---
+C: 1.0
+cache_size: 2000
+coef0: 0.0
+degree: 3
+epsilon: 0.1
+gamma: scale
+kernel: rbf
+max_iter: 10000
+shrinking: True
+tol: 0.001
+verbose: False
