@@ -33,8 +33,7 @@ def report(folder):
     if predictions and isinstance(predictions[0], list):
         predictions = [p[0] for p in predictions]
     if predictions and "ERROR" not in str(predictions[0]):
-        if all(val in [0, 1, 0.0, 1.0] for val in predictions): # check if every single prediction is exactly 0, 1, 0.0, or 1.0
-            predictions = [int(p) for p in predictions]
+        predictions = [int(p) for p in predictions]
 
     # report calculations
     if not predictions or "ERROR_RETRIEVING_RESULTS" in predictions:
@@ -107,14 +106,11 @@ Actual Attack (1): {fn:^16} | {tp:^16}
                 for option in options:
                     f.write(f"{option}\n")
 
-        if ml_type == "vqc":
-            f.write("\n--- Sampler info ---\n")
-            f.write(f"Default shots: {data['num_shots']}\n")
-            if ml_type == "vqc" and data.get('num_shots') is not None:
-                total_cost = data['nfev'] * data['num_shots']
-                f.write(f"Total computational cost: {total_cost} shots\n")
-            else:
-                f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
+        f.write("\n--- Sampler info ---\n")
+        f.write(f"Default shots: {data['num_shots']}\n")
+        if ml_type == "vqc" and data.get('num_shots') is not None:
+            total_cost = data['nfev'] * data['num_shots']
+            f.write(f"Total computational cost: {total_cost} shots\n")
 
 def main():
     folder = "results/ideal/vqc/vqc_data-kdd_3.14-scale_5-fpca_onehot-enc_240_backend-ideal_time-10062026_1215"

@@ -100,7 +100,19 @@ Actual Attack (1): {fn:^16} | {tp:^16}
             else:
                 f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
 
-def results_save(ml_type, ml, o_list, folder, train_time, test_features, n_features, d_file, filename):
+def training(ml_type, train_features, train_labels, test_features, n_features, d_file, folder, filename):
+    if ml_type=="vqc":
+        ml, o_list = algorithm.vqc_def(n_features, folder)
+    elif ml_type=="qsvc":
+        ml, o_list = algorithm.qsvc_def(n_features, folder)
+    elif ml_type=="pegasos_qsvc":
+        ml, o_list = algorithm.pegasos_def(n_features, folder)
+    
+    print("Starting training...")
+    start = time.time()
+    ml.fit(train_features, train_labels)
+    train_time = time.time() - start
+
     print(f"\nSaving data to {folder}...")
     metadata = {
         "ml_type": ml_type,
@@ -159,21 +171,6 @@ def results_save(ml_type, ml, o_list, folder, train_time, test_features, n_featu
 
     print("Saving report...")
     report(folder, ml, ml_type, predictions)
-
-def training(ml_type, train_features, train_labels, test_features, n_features, d_file, folder, filename):
-    if ml_type=="vqc":
-        ml, _, _, _, o_list = algorithm.vqc_def(n_features, "ideal", None, folder, filename)
-    elif ml_type=="qsvc":
-        ml, _, _, _, o_list = algorithm.qsvc_def(n_features, "ideal", folder)
-    elif ml_type=="pegasos_qsvc":
-        ml, _, _, _, o_list = algorithm.pegasos_def(n_features, "ideal", folder)
-    
-    print("Starting training...")
-    start = time.time()
-    ml.fit(train_features, train_labels)
-    train_time = time.time() - start
-
-    results_save(ml_type, ml, o_list, folder, train_time, test_features, n_features, d_file, filename)
 
 def prep(ml_type, d_file):
     d_path = f"dataset/{d_file}"
