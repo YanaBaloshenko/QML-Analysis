@@ -29,7 +29,7 @@ def parse_result_file(file_path):
         'accuracy': accuracy
     }
 
-def collect_all_results(root_folder):
+def collect_results(root_folder, ml):
     data = []
     for root, dirs, files in os.walk(root_folder): # os.walk travels through all subdirectories
         for file in files:
@@ -39,7 +39,9 @@ def collect_all_results(root_folder):
 
                 if parsed:
                     data.append(parsed)
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+
+    plot(df, ml)
 
 def plot(df, ml):
     heatmap_data = df.pivot_table(index='features', columns='dataset_size', values='accuracy')
@@ -50,10 +52,8 @@ def plot(df, ml):
     plt.close('all')
 
 def main():
-    ml = 'mlpr' # ['svc', 'svr', 'mlpr']
-    df = collect_all_results(f'results/classic/{ml}')
-
-    plot(df, ml)
+    ml = 'pegasos' # ['svc', 'pegasos']
+    collect_results(f'results/classic/{ml}')
 
 if __name__ == "__main__":
     main()

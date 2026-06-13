@@ -7,7 +7,7 @@ from qiskit_machine_learning.utils import algorithm_globals
 from sklearn.datasets import load_iris
 from sklearn.preprocessing import MinMaxScaler
 
-import qml
+import qml_sim
 import iris.iris_data_prep as iris_data_prep
 
 def main():

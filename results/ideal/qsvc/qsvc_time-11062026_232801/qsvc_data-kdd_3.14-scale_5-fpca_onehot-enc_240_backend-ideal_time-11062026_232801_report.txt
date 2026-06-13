@@ -1,0 +1,40 @@
+Model QSVC | Job Id N/A
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_5-fpca_onehot-enc_240
+Number of features: 5
+Number of records: train - 204, test - 36
+
+--- Training info ---
+Number of classes: N/A
+Training time: 0.40575122833251953 s
+Accuracy on training set: 1.00
+Accuracy: 0.75
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        13        |        3        
+Actual Attack (1):        6         |        14       
+
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.68      0.81      0.74        16
+  Attack (1)       0.82      0.70      0.76        20
+
+    accuracy                           0.75        36
+   macro avg       0.75      0.76      0.75        36
+weighted avg       0.76      0.75      0.75        36
+
+
+--- Feature Importance ---
+N/A: Feature importance via input gradients is not mathematically applicable for Quantum Kernel SVMs.
+
+--- Model parameters ---
+Number of qubits: 5
+Number of Support Vectors: 0
+Model options:
+class_weight='balanced'
+C=0.7

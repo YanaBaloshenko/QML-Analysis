@@ -1,0 +1,20 @@
+Model VQC | Job Id N/A
+
+--- Dataset info ---
+Data file used: iris_2-fpca_onehot-enc_150
+Number of features: 2
+Number of records: train - 120, test - 30
+
+--- Training info ---
+Number of classes: N/A
+Training time: 11.886164665222168 s
+Accuracy on training set: 0.66
+Accuracy: 0.67
+
+--- Optimizer (COBYLA) set settings ---
+maxiter: 40
+disp: False
+rhobeg: 1.0
+max_evals_grouped: 1
+options: {}
+tol: None

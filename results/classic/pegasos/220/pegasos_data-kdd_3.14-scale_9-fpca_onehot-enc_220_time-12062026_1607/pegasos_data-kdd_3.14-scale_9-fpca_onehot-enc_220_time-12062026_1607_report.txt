@@ -1,0 +1,57 @@
+Model SGDClassifier
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_9-fpca_onehot-enc_220
+Number of features: 9
+Number of records: train - 187, test - 33
+
+--- Training info ---
+Training time: 0.007462263107299805 s
+Inference time for 33 records: 0.0000 s
+Number of iterations for convergance: 23
+Models complexity (Numbers of Weights & Biases): 10
+Accuracy: 0.5455
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        12        |        2        
+Actual Attack (1):        13        |        6        
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       0.48      0.86      0.62        14
+  Attack (1)       0.75      0.32      0.44        19
+
+    accuracy                           0.55        33
+   macro avg       0.61      0.59      0.53        33
+weighted avg       0.64      0.55      0.52        33
+
+
+--- Model Architecture & Parameters ---
+Loss function: hinge
+Penalty: l2
+Number of trainable weights: 10
+
+--- Optimizer (SGDClassifier) Settings ---
+alpha: 0.0001
+average: False
+class_weight: balanced
+early_stopping: True
+epsilon: 0.1
+eta0: 0.01
+fit_intercept: True
+l1_ratio: 0.15
+learning_rate: optimal
+loss: hinge
+max_iter: 10000
+n_iter_no_change: 20
+n_jobs: None
+penalty: l2
+power_t: 0.5
+random_state: 42
+shuffle: True
+tol: 0.001
+validation_fraction: 0.1
+verbose: 0
+warm_start: False

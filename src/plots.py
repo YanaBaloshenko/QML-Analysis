@@ -21,8 +21,14 @@ def qsvc_plots(results_dict):
 
 def vqc_plots():
     runs = ['Run 1', 'Run 2', 'Run 3', 'Run 4', 'Run 5']
-    times = [324.62, 322.18, 324.9, 324.06, 327.74]
-    accuracies = [0.53, 0.67, 0.75, 0.81, 0.61]
+    #times = [324.62, 322.18, 324.9, 324.06, 327.74] # spsa
+    #accuracies = [0.53, 0.67, 0.75, 0.81, 0.61]
+    times = [94.25, 94.98, 95.23, 95.79, 93.83] # cobyla
+    accuracies = [0.67, 0.58, 0.67, 0.47, 0.61]
+    #times = [121.47, 126.29, 124.45, 125.41, 125.73] # realamplitudes
+    #accuracies = [0.50, 0.61, 0.64, 0.69, 0.61]
+    #times = [141.6, 143.11, 144.1, 148.88, 144.96] # efficientsu2
+    #accuracies = [0.58, 0.53, 0.58, 0.64, 0.72]
     combined_labels = [f"{runs[i]}\n({times[i]}s)" for i in range(len(runs))] # combine the run name and time into a multi-line label
 
     plt.figure(figsize=(8, 5))
@@ -31,11 +37,11 @@ def vqc_plots():
     plt.yticks(unique_accuracies)
     plt.xlabel('Execution Instance & Training Time', fontsize=12, fontweight='bold')
     plt.ylabel('Test Accuracy', fontsize=12, fontweight='bold')
-    plt.title('VQR: Test Accuracy per Execution for RealAmplitudes Ansatz', fontsize=14)
+    plt.title('VQC: Test Accuracy per Execution for COBYLA Optimizer', fontsize=14)
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.ylim(min(accuracies) - 0.02, max(accuracies) + 0.02)
     plt.tight_layout()
-    plt.savefig("results/ideal/vqc/plots/vqc_accuracy-time_spsa.png", dpi=300)
+    plt.savefig("results/ideal/vqc/plots/vqc_accuracy-time_cobyla.png", dpi=300)
     plt.close()
 
 def main():

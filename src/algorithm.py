@@ -5,36 +5,27 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
-from iqm import qiskit_iqm
-from iqm.qiskit_iqm.fake_backends.fake_garnet import IQMFakeGarnet
+from qiskit_machine_learning.algorithms.classifiers import VQC # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.VQC.html
+from qiskit_machine_learning.algorithms import QSVC # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.QSVC.html
+from qiskit_machine_learning.algorithms import PegasosQSVC # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.PegasosQSVC.html
+from qiskit_machine_learning.kernels import FidelityQuantumKernel, FidelityStatevectorKernel # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.kernels.FidelityQuantumKernel.html # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.kernels.FidelityStatevectorKernel.html
+from qiskit_machine_learning.state_fidelities import ComputeUncompute # https://qiskit-community.github.io/qiskit-algorithms/stubs/qiskit_algorithms.state_fidelities.ComputeUncompute.html
+
 from iqm.qiskit_iqm import IQMProvider
 from qiskit.primitives import StatevectorSampler, BackendSamplerV2
-from qiskit.primitives import StatevectorEstimator, BackendEstimatorV2
-from qiskit.quantum_info import SparsePauliOp
+from qiskit.circuit.library import zz_feature_map # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.ZZFeatureMap.html
+from qiskit.circuit.library import real_amplitudes, efficient_su2 # https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.circuit.library.RealAmplitudes # https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.circuit.library.EfficientSU2
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager # https://quantum.cloud.ibm.com/docs/en/api/qiskit/transpiler
 
-from qiskit_machine_learning.utils import algorithm_globals
-
-from qiskit.circuit.library import zz_feature_map, real_amplitudes, efficient_su2
-from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-
-from qiskit_machine_learning.optimizers import COBYLA
-from qiskit_machine_learning.optimizers import SPSA
-
-from qiskit_machine_learning.algorithms.classifiers import VQC # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.VQC.html
-from qiskit_machine_learning.algorithms import VQR # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.VQR.html
-from qiskit_machine_learning.algorithms import QSVC # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.QSVC.html
-from qiskit_machine_learning.algorithms import QSVR # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.algorithms.QSVR.html
-from qiskit_machine_learning.kernels import FidelityQuantumKernel, FidelityStatevectorKernel
-from qiskit_machine_learning.state_fidelities import ComputeUncompute
+from qiskit_machine_learning.optimizers import COBYLA # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.COBYLA.html
+from qiskit_machine_learning.optimizers import SPSA # https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
 
 load_dotenv()
 token = os.getenv("IQM_TOKEN")
 iqm_link = "https://resonance.iqm.tech/"
 
-spsa = SPSA(maxiter=20, learning_rate=0.02, perturbation=0.1) # SPSA doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit_machine_learning.optimizers.SPSA.html
-
 objective_func_vals = []
-def get_callback(folder, file_name):
+def get_callback(folder, file_name, bcknd):
     def callback(*args):
         if len(args) == 5: # SPSA signature: (nfev, weights, value, stepsize, accepted)
             weights = args[1]
@@ -47,178 +38,105 @@ def get_callback(folder, file_name):
         iteration = len(objective_func_vals)
         print(f"Iteration: {iteration} | Objective function value: {value:.4f}")
 
-        latest_path = (f"{folder}/checkpoints/{file_name}_latest_checkpoint.npy") # always save the absolute latest state (overwrites the previous one)
-        np.save(latest_path, weights)
-        
-        if iteration % 5 == 0:  # save a permanent history file every 5 iterations (if QPU gets very noisy and ruins weights late in the run)
-            history_path = (f"{folder}/checkpoints/{file_name}_checkpoint_iter_{iteration}.npy")
-            np.save(history_path, weights)
+        if bcknd != "ideal":
+            latest_path = (f"{folder}/checkpoints/{file_name}_latest_checkpoint.npy") # always save the absolute latest state (overwrites the previous one)
+            np.save(latest_path, weights)
+            if iteration % 5 == 0:  # save a permanent history file every 5 iterations
+                history_path = (f"{folder}/checkpoints/{file_name}_checkpoint_iter_{iteration}.npy")
+                np.save(history_path, weights)
             
     return callback
 
 def backend_def(bcknd):
-    if bcknd == "ideal":
+    if bcknd == "ideal": # konfiguracja samplera dla symulatora
         backend=None
-        estimator = StatevectorEstimator()
-        sampler = StatevectorSampler()
-    elif bcknd == "f_garnet":
-        backend=IQMFakeGarnet() # 20 qubits
-        estimator = BackendEstimatorV2(backend=backend)
-        sampler = BackendSamplerV2(backend=backend)
-    elif bcknd == "sirius" or bcknd == "garnet" or bcknd == "emerald":
-        backend = IQMProvider(iqm_link, quantum_computer=bcknd).get_backend() # docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/qiskit.primitives.BackendSamplerV2
-        
-        estimator = BackendEstimatorV2(backend=backend)
-        estimator.options.default_precision = 0.05 # 0.05 is a sweet spot? - it's 400 shots per circuit (n = 1/precision^2)
-        estimator.options.resilience_level = 1
-        
-        sampler = BackendSamplerV2(backend=backend)
-        sampler.options.default_shots = 512
-        sampler.options.resilience_level = 1 # resilience_level (int) – level of error mitigation to apply, valid values are 0 (no error mitigation), 1 (basic readout error mitigation), and 2 (advanced error mitigation using quasi-probability method)
+        sampler = StatevectorSampler() # konfiguracja samplera
+    elif bcknd == "sirius" or bcknd == "garnet" or bcknd == "emerald": # konfiguracja samplera dla qpu
+        backend = IQMProvider(iqm_link, quantum_computer=bcknd).get_backend() # wybranie qpu do połączenia
+        sampler = BackendSamplerV2(backend=backend) # konfiguracja samplera
+        sampler.options.default_shots = 512 # ilość obliczeń (shotów) jednego obwodu
+        sampler.options.resilience_level = 1 # poziom mitygacji błędów:
+                                             # 0 (bez mitygacji), 1 (bazowa readout error), 2 (metod quasi-probability)
     else:
         raise ValueError(f"Couldn't find backend: {bcknd}")
-    return sampler, estimator, backend
+    return sampler, backend
 
 def vqc_def(n_features, bcknd, initial_point, folder, file_name):
     os.makedirs(folder, exist_ok=True)
-    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
+    if bcknd != "ideal":
+        os.makedirs(f"{folder}/checkpoints", exist_ok=True)
 
-    sampler, _, backend = backend_def(bcknd)
-    fm_reps = 1
-    ansatz_reps = 3
+    sampler, backend = backend_def(bcknd)
+    fm_reps = 1 # liczba powtórzeń dla mapy cech
+    ansatz_reps = 3 # liczba powtórzeń dla ansatzu
 
-    if bcknd == "ideal":
-        optimizer = SPSA(maxiter=100)
-        pm = None
-        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps)
-        ansatz = efficient_su2(num_qubits=n_features, reps=ansatz_reps)
-    else:
-        optimizer = spsa
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target) # transpilators docs https://quantum.cloud.ibm.com/docs/en/api/qiskit/transpiler
-        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear') # feature map doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.ZZFeatureMap.html
-        ansatz = real_amplitudes(num_qubits=n_features, reps=ansatz_reps, entanglement='linear') # ansatz doc https://qiskit-community.github.io/qiskit-machine-learning/stubs/qiskit.circuit.library.RealAmplitudes.html
+    if bcknd == "ideal": # konfiguracja opcji algorytmu dla symulatora
+        optimizer = SPSA(maxiter=100) # konfiguracja optymalizatora
+        pm = None # brak potrzeby transpilacji dla symulatora
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps) # mapa cech z ilością kubitów równej liczbie cech
+        ansatz = efficient_su2(num_qubits=n_features, reps=ansatz_reps) # ansatz z ilością kubitów równej liczbie cech
+    else: # konfiguracja opcji algorytmu dla qpu
+        optimizer = spsa = SPSA(maxiter=20, learning_rate=0.02, perturbation=0.1) # konfiguracja optymalizatora
+        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target) # preset do transpilacji
+                                                                                       # opt_lvl: 0 - bez optymalizacji, 1 - lekka, 2 - ciężka, 3 - największa)
+        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear') # mapa cech z liniowym splątaniem
+        ansatz = real_amplitudes(num_qubits=n_features, reps=ansatz_reps, entanglement='linear') # ansatz z liniowym splątaniem
         
-    custom_callback = get_callback(folder, file_name)
+    custom_callback = get_callback(folder, file_name) # funkcja zwrotna zapisująca wartości funkcji kosztu
 
-    print("Defining VQC...")
-    vqc = VQC(
-        # num_qubits (also defined by feature map and ansatz)
+    vqc = VQC( # definicja algorytmu
         feature_map=feature_map,
         ansatz=ansatz,
-        # loss (default - cross_entropy) - target loss function to be used in training
         optimizer=optimizer,
-        #warm_start=True, # use weights from previous fit to start next fit
         initial_point=initial_point,
         callback=custom_callback,
         sampler=sampler,
         pass_manager=pm
-        # interpret - callable that maps measured integer to another unsigned integer or tuple of unsigned integers (used as new indices for the (potentially sparse) output array, basic parity function used if None passed)
-        # output_shape (default - 2) - for the underlying neural network generally equals to number of classes
     )
-
-    ansatz_fig = vqc.ansatz.draw(output='mpl')
-    ansatz_name = vqc.ansatz.name
-    ansatz_fig.suptitle(f"Ansatz: {ansatz_name} | Reps: {ansatz_reps}", fontsize=14, y=1.05)
-    ansatz_fig.savefig(f"{folder}/{file_name}_{ansatz_name}-ansatz.png", dpi=300, bbox_inches='tight')
-    plt.close(ansatz_fig)
 
     return vqc, pm, sampler, backend, objective_func_vals
 
-def vqr_def(n_features, bcknd, initial_point, folder, file_name):
+def qsvc_def(n_features, bcknd, folder):
     os.makedirs(folder, exist_ok=True)
-    os.makedirs(f"{folder}/plots", exist_ok=True)
-    os.makedirs(f"{folder}/checkpoints", exist_ok=True)
-
-    _, estimator, backend = backend_def(bcknd)
-    fm_reps = 1
-    ansatz_reps = 3
-
-    if bcknd == "ideal":
-        optimizer = SPSA(maxiter=100)
-        pm = None
-        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps)
-        ansatz = efficient_su2(num_qubits=n_features, reps=ansatz_reps)
-    else:
-        optimizer = spsa
-        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-        feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear')
-        ansatz = real_amplitudes(num_qubits=n_features, reps=ansatz_reps, entanglement='linear')
     
-    observable = SparsePauliOp.from_list([("Z" * n_features, 1)]) # observable !!!!!!!!!!!!!!!!! check # the result would be in [-1, 1]
-
-    custom_callback = get_callback(folder, file_name)
-
-    print("Defining VQR...")
-    vqr = VQR(
-        #num_qubits (int | None) – for the underlying QNN, if None - derived from the feature map or ansatz
-        feature_map=feature_map, # zz_feature_map() is default, for a single qubit regression problem - z_feature_map()
-        ansatz=ansatz, # real_amplitudes() is default
-        observable=observable, # (BaseOperator | None) observable to be measured in the underlying QNN
-        #loss (str | Loss) – default is squared error
-        optimizer=optimizer, # defaults to SLSQP
-        #warm_start (bool) – use weights from previous fit to start next fit
-        initial_point=initial_point,
-        callback=custom_callback,
-        estimator=estimator,
-        pass_manager=pm
-    )
-
-    ansatz_fig = vqr.ansatz.draw(output='mpl')
-    ansatz_name = vqr.ansatz.name
-    ansatz_fig.suptitle(f"Ansatz: {ansatz_name} | Reps: {ansatz_reps}", fontsize=14, y=1.05)
-    ansatz_fig.savefig(f"{folder}/plots/{file_name}_{ansatz_name}-ansatz.png", dpi=300, bbox_inches='tight')
-    plt.close(ansatz_fig)
-
-    return vqr, pm, estimator, backend, objective_func_vals
-
-def qsvc_def(n_features, bcknd, folder, file_name):
-    os.makedirs(folder, exist_ok=True)
-
-    sampler, _, backend = backend_def(bcknd)
-    fidelity = ComputeUncompute(sampler=sampler)
-    
-    if bcknd == "ideal":
+    if bcknd == "ideal": # konfiguracja jądra dla symulatora
         feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
         pm = None
-        qkernel = FidelityStatevectorKernel(feature_map=feature_map)
-    else:
+        qkernel = FidelityStatevectorKernel(feature_map=feature_map) # FidelityStatevectorKernel - symulowane jądro
+    else: # konfiguracja jądra dla qpu
+        sampler, backend = backend_def(bcknd)
+        fidelity = ComputeUncompute(sampler=sampler) # metoda wierności
         f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
-        if hasattr(backend, 'target'):
-            pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-        else:
-            pm = generate_preset_pass_manager(optimization_level=2)
-        feature_map = pm.run(f_m)
+        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
+        feature_map = pm.run(f_m) # transpilacja mapy cech przed podaniem do kernela
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
-    print("Defining QSVC...")
-    qsvc = QSVC(quantum_kernel=qkernel, class_weight='balanced', C=0.9)
+    c = 0.5
+    options = [f"C={c}", "class_weight='balanced'"]
 
-    options = ["class_weight='balanced'", "C=0.9"]
+    qsvc = QSVC(quantum_kernel=qkernel, class_weight='balanced', C=c)
 
     return qsvc, pm, sampler, backend, options
 
-def qsvr_def(n_features, bcknd, folder, file_name):
+def pegasos_def(n_features, bcknd, folder):
     os.makedirs(folder, exist_ok=True)
-
-    sampler, _, backend = backend_def(bcknd)
-    fidelity = ComputeUncompute(sampler=sampler)
-
-    if bcknd == "ideal":
+    
+    if bcknd == "ideal": # konfiguracja jądra dla symulatora
         feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
         pm = None
         qkernel = FidelityStatevectorKernel(feature_map=feature_map)
-    else:
+    else: # konfiguracja jądra dla qpu
+        sampler, backend = backend_def(bcknd)
+        fidelity = ComputeUncompute(sampler=sampler)
         f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
-        if hasattr(backend, 'target'):
-            pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
-        else:
-            pm = generate_preset_pass_manager(optimization_level=2)
+        pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
         feature_map = pm.run(f_m)
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
-    print("Defining QSVR...")
-    qsvr = QSVR(quantum_kernel=qkernel, epsilon=0.5)
+    c = 100
+    ns = 1750
+    options = [f"C={c}", f"num_steps={ns}"] # lista wybranych wartości c i num_steps do raportu
+    
+    qsvc = PegasosQSVC(quantum_kernel=qkernel, C=c, num_steps=ns) # definicja modelu
 
-    options = ["epsilon=0.5"]
-
-    return qsvr, pm, sampler, backend, options
+    return qsvc, pm, sampler, backend, options

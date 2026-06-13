@@ -3,3 +3,4 @@ venv/*
 .env
 notes.txt
 */__pycache__/*
+results/ideal/vqc/old/*

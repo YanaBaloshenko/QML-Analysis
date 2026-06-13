@@ -1,0 +1,37 @@
+Model PegasosQSVC
+
+--- Dataset info ---
+Data file used: kdd_3.14-scale_6-fpca_onehot-enc_260
+Number of features: 6
+Number of records: train - 221, test - 39
+
+--- Training info ---
+Number of classes: N/A
+Training time: 22.478917837142944 s
+Accuracy on training set: 0.70
+Accuracy: 0.72
+
+--- Confusion matrix (class 0 - normal, class 1 - attack) ---
+
+                  Predicted Normal| Predicted Attack
+Actual Normal (0):        6         |        11       
+Actual Attack (1):        0         |        22       
+
+
+--- Classification Report ---
+              precision    recall  f1-score   support
+
+  Normal (0)       1.00      0.35      0.52        17
+  Attack (1)       0.67      1.00      0.80        22
+
+    accuracy                           0.72        39
+   macro avg       0.83      0.68      0.66        39
+weighted avg       0.81      0.72      0.68        39
+
+
+--- Model parameters ---
+Number of qubits: 6
+Number of Support Vectors: 0
+Model options:
+C=100.0
+num_steps=250

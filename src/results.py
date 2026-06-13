@@ -1,12 +1,8 @@
-import os
 import json
 import numpy as np
-import pandas as pd
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, mean_squared_error, mean_absolute_error
-
-from qiskit.primitives import StatevectorSampler, StatevectorEstimator
-from qiskit_machine_learning.gradients import ParamShiftSamplerGradient, ParamShiftEstimatorGradient    
-from qiskit_machine_learning.algorithms import VQC, VQR, QSVC, QSVR
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+ 
+from qiskit_machine_learning.algorithms import VQC, QSVC, PegasosQSVC
 
 def report(folder):
     # files prep
@@ -18,12 +14,12 @@ def report(folder):
 
     if ml_type == "vqc":
         ml = VQC.from_dill(f"{folder}/{filename}.model")
-    elif ml_type == "vqr":
-        ml = VQR.from_dill(f"{folder}/{filename}.model")
     elif ml_type == "qsvc":
         ml = QSVC.from_dill(f"{folder}/{filename}.model")
-    elif ml_type == "qsvr":
-        ml = QSVR.from_dill(f"{folder}/{filename}.model")
+    elif ml_type == "pegasos_qsvc":
+        ml = PegasosQSVC.from_dill(f"{folder}/{filename}.model")
+    else:
+        raise ValueError("Unknown model type.")
 
     d_file = data["d_file"]
     sets = np.load(f"dataset/{d_file}/{d_file}.npz")
@@ -32,19 +28,6 @@ def report(folder):
     train_labels = sets['train_labels']
     test_features = sets['test_features']
     test_labels = sets['test_labels']
-    
-    pca_weights = np.load(f"dataset/{d_file}/{d_file}_pcaweights.npy")
-
-    if ml_type == "vqc":
-        og_sampler = ml.neural_network.sampler
-        sampler = StatevectorSampler()
-        ml.neural_network.sampler = sampler
-        ml.neural_network.gradient = ParamShiftSamplerGradient(sampler=sampler)
-    if ml_type == "vqr":
-        og_estimator = ml.neural_network.estimator
-        estimator = StatevectorEstimator()
-        ml.neural_network.estimator = estimator
-        ml.neural_network.gradient = ParamShiftEstimatorGradient(estimator=estimator)
 
     predictions = data.get("predictions", [])
     if predictions and isinstance(predictions[0], list):
@@ -55,16 +38,11 @@ def report(folder):
 
     # report calculations
     if not predictions or "ERROR_RETRIEVING_RESULTS" in predictions:
-        test_score, mse_val, mae_val = 0.0, 0.0, 0.0, 0.0, 0.0
+        test_score = 0.0
         report = "N/A: All QPU inference jobs failed or returned errors."
         cm_text = "N/A: No valid data to display."
         print("No valid predictions found. Skipping metrics calculation.")
     else:
-        if ml_type in ["vqr", "qsvr"]: # regression metrics (how well physical circuit holds ideal values)
-            mse_val = mean_squared_error(test_labels, predictions)
-            mae_val = mean_absolute_error(test_labels, predictions)
-            predictions = [(1 if p > 0.0 else 0) for p in predictions] # binarizing, decision threshold (for -1,1 set to 0)
-
         test_score = accuracy_score(test_labels, predictions)
         report = classification_report(test_labels, predictions, target_names=["Normal (0)", "Attack (1)"], zero_division=0.0)
         cm = confusion_matrix(test_labels, predictions)
@@ -74,27 +52,6 @@ def report(folder):
 Actual Normal (0): {tn:^16} | {fp:^16}
 Actual Attack (1): {fn:^16} | {tp:^16}
 """
-        
-    # calculating feature importance
-    if ml_type in ["vqc", "vqr"]:
-        sample_fi = test_features[0].reshape(1, -1)
-        _ = ml.neural_network.forward(sample_fi, ml.weights)
-        ml.neural_network.input_gradients = True
-        in_grads, weight_grads = ml.neural_network.backward(sample_fi, ml.weights)
-        
-        encoded_names = np.load(f"dataset/{d_file}/{d_file}_names.npy", allow_pickle=True).tolist()
-        fi_df = pd.DataFrame({
-            'Original Feature': encoded_names,
-            'Importance': np.abs(np.dot(in_grads[0][0], pca_weights).flatten())
-        }).sort_values(by='Importance', ascending=False)
-
-        fi = fi_df.to_string(
-            index=False,                       # Hides the 0, 1, 2 row numbers
-            justify='left',                    # Aligns the column headers nicely
-            float_format=lambda x: f"{x:.6f}"  # Rounds the importance to 6 decimal places
-        )
-    else:
-        fi = "N/A: Feature importance via input gradients is not mathematically applicable for Quantum Kernel SVMs."
 
     if data['bcknd'] == "ideal":
         train_score = ml.score(train_features, train_labels)
@@ -103,7 +60,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
  
     # saving report
     with open(f"{folder}/{filename}_report.txt", "w") as f:
-        f.write(f"Model {type(ml).__name__} | Job Id {data.get('job_id', 'N/A')}\n")
+        f.write(f"Model {type(ml).__name__}\n")
         f.write("\n--- Dataset info ---\n")
         f.write(f"Data file used: {d_file}\n")
         f.write(f"Number of features: {data.get('n_features', 'N/A')}\n")
@@ -112,9 +69,6 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         f.write("\n--- Training info ---\n")
         f.write(f"Number of classes: {data.get('num_classes', 'N/A')}\n")
         f.write(f"Training time: {data.get('train_time', 'N/A')} s\n")
-        if ml_type in ["vqr", "qsvr"]:
-            f.write(f"Mean Squared Error (MSE): {mse_val:.4f}\n")
-            f.write(f"Mean Absolute Error (MAE): {mae_val:.4f}\n")
         if train_score != None:
             f.write(f"Accuracy on training set: {train_score:.2f}\n")
         f.write(f"Accuracy: {test_score:.2f}\n")
@@ -125,12 +79,9 @@ Actual Attack (1): {fn:^16} | {tp:^16}
         f.write("\n--- Classification Report ---\n")
         f.write(f"{report}\n")
 
-        f.write("\n--- Feature Importance ---\n")
-        f.write(f"{fi}\n")
-
         f.write("\n--- Model parameters ---\n")
         f.write(f"Number of qubits: {data.get('num_qubits', 'N/A')}\n")
-        if ml_type in ["vqc", "vqr"]:
+        if ml_type =="vqc":
             f.write(f"Number of iterations: {data.get('nit', 'N/A')}\n") # czy optymalizator zatrzymał się bo "dotarł do celu" czy skończył mu się limit iteracji (maxiter from optimalizator)
             f.write(f"Number of Function Evaluations: {data.get('nfev', 'N/A')}\n") # ile razy optymalizator musiał uruchomić obwód kwantowy - płacić trzeba za każde uruchomienie (nfev), a nie za samą iterację
             f.write(f"Loss function type: {data.get('loss_name', 'N/A')}\n") # actual thing in fit_result
@@ -148,7 +99,7 @@ Actual Attack (1): {fn:^16} | {tp:^16}
             f.write(f"\n--- Optimizer ({data.get('optimizer_name', 'N/A')}) set settings ---\n")
             for key, value in data.get("optimizer_settings", {}).items():
                 f.write(f"{key}: {value}\n")
-        else: # QSVC/QSVR specific metrics
+        else: # qsvc/pegasos specific metrics
             f.write(f"Number of Support Vectors: {data.get('support_vectors', 'N/A')}\n")
             options = data.get('options', None)
             if options != None:
@@ -164,15 +115,6 @@ Actual Attack (1): {fn:^16} | {tp:^16}
                 f.write(f"Total computational cost: {total_cost} shots\n")
             else:
                 f.write(f"Total computational cost: Exact statevector calculation ({data['nfev']} circuit evaluations)\n") # for ideal StatevectorSampler
-        
-        elif ml_type == "vqr":
-            f.write("\n--- Estimator info ---\n") # dif section
-            num_shots = data.get('num_shots', "N/A")
-            f.write(f"Precision Parameter: {num_shots}\n")
-            if "Precision" in str(num_shots):
-                f.write(f"Total computational cost: Dynamic shots resolved by Hoeffding inequality based on precision.\n")
-            else:
-                f.write(f"Total computational cost: Exact statevector calculation ({data.get('nfev', 'N/A')} circuit evaluations)\n")
 
 def main():
     folder = "results/ideal/vqc/vqc_data-kdd_3.14-scale_5-fpca_onehot-enc_240_backend-ideal_time-10062026_1215"
