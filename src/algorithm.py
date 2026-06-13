@@ -98,13 +98,13 @@ def vqc_def(n_features, bcknd, initial_point, folder, file_name):
 
 def qsvc_def(n_features, bcknd, folder):
     os.makedirs(folder, exist_ok=True)
+    sampler, backend = backend_def(bcknd)
     
     if bcknd == "ideal": # konfiguracja jądra dla symulatora
         feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
         pm = None
         qkernel = FidelityStatevectorKernel(feature_map=feature_map) # FidelityStatevectorKernel - symulowane jądro
     else: # konfiguracja jądra dla qpu
-        sampler, backend = backend_def(bcknd)
         fidelity = ComputeUncompute(sampler=sampler) # metoda wierności
         f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
         pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
@@ -120,21 +120,21 @@ def qsvc_def(n_features, bcknd, folder):
 
 def pegasos_def(n_features, bcknd, folder):
     os.makedirs(folder, exist_ok=True)
+    sampler, backend = backend_def(bcknd)
     
     if bcknd == "ideal": # konfiguracja jądra dla symulatora
         feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
         pm = None
         qkernel = FidelityStatevectorKernel(feature_map=feature_map)
     else: # konfiguracja jądra dla qpu
-        sampler, backend = backend_def(bcknd)
         fidelity = ComputeUncompute(sampler=sampler)
         f_m = zz_feature_map(feature_dimension=n_features, reps=1, entanglement='linear')
         pm = generate_preset_pass_manager(optimization_level=2, target=backend.target)
         feature_map = pm.run(f_m)
         qkernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
 
-    c = 100
-    ns = 1750
+    c = 50
+    ns = 750
     options = [f"C={c}", f"num_steps={ns}"] # lista wybranych wartości c i num_steps do raportu
     
     qsvc = PegasosQSVC(quantum_kernel=qkernel, C=c, num_steps=ns) # definicja modelu

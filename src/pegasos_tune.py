@@ -29,7 +29,7 @@ def hyperparameter_search(d_file):
     print(f"Finished. Time: {time.time() - start_kernel:.2f} s")
 
     print("\nGrid Search...")
-    C_values = [100.0, 200.0, 300.0, 400.0, 500.0] # zbiór wartości parametru regularyzacji
+    C_values = [50, 100.0, 200.0, 300.0, 400.0, 500.0] # zbiór wartości parametru regularyzacji
     num_steps_values = [250, 500, 750, 1000, 1250, 1500, 1750] # zbiór wartości kroków algorytmu
     results_list = []
     

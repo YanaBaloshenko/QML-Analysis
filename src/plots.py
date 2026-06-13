@@ -1,4 +1,4 @@
-import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
@@ -44,6 +44,52 @@ def vqc_plots():
     plt.savefig("results/ideal/vqc/plots/vqc_accuracy-time_cobyla.png", dpi=300)
     plt.close()
 
+def pegasos_plots():
+    data = {
+        'C': [100, 400, 500, 100, 100],
+        'num_steps': [250, 500, 500, 750, 1750],
+        'Accuracy': [0.65, 0.72, 0.75, 0.68, 0.70] # <-- WSTAW TUTAJ SWOJE WYNIKI
+    }
+    df = pd.DataFrame(data)
+
+    plt.figure(figsize=(10, 6))
+    sns.set_theme(style="whitegrid")
+
+    # 3. Rysowanie bąbelków
+    scatter = plt.scatter(
+        x=df['C'], 
+        y=df['num_steps'], 
+        s=df['Accuracy'] * 1000,  # Rozmiar kropki (przeskalowany do widoczności)
+        c=df['Accuracy'],         # Kolor na podstawie wyniku
+        cmap='viridis',           # Mapa kolorów (od ciemnofioletowego do żółtego)
+        alpha=0.8,
+        edgecolors="black",
+        linewidth=1.5
+    )
+
+    # 4. Dodanie dokładnych wartości liczbowych nad kropkami
+    for i in range(len(df)):
+        plt.text(df['C'].iloc[i], df['num_steps'].iloc[i] + 40, 
+              f"{df['Accuracy'].iloc[i]:.3f}", 
+              horizontalalignment='center', size='medium', color='black', weight='bold')
+
+    # 5. Etykiety i kosmetyka
+    cbar = plt.colorbar(scatter)
+    cbar.set_label('Accuracy', rotation=270, labelpad=15, weight='bold')
+
+    plt.title('Wpływ hiperparametrów na skuteczność modelu (Pegasos QSVC)', fontsize=14, pad=20, weight='bold')
+    plt.xlabel('Parametr regularyzacji (C)', fontsize=12, weight='bold')
+    plt.ylabel('Liczba iteracji (num_steps)', fontsize=12, weight='bold')
+
+    # Wymuszenie szerszych marginesów, żeby kropki nie ucinały się na krawędziach
+    plt.xlim(0, 600)
+    plt.ylim(0, 2000)
+
+    plt.tight_layout()
+    plt.savefig("pegasos_bubble_plot.png", dpi=300)
+    plt.show()
+    plt.close('all')
+
 def main():
     qsvc_dict = {
         0.1: 0.69,
@@ -60,7 +106,7 @@ def main():
     } # format: {C_value: accuracy}
     #qsvc_plots(qsvc_dict)
 
-    vqc_plots()
+    pegasos_plots()
     
 
 if __name__ == "__main__":

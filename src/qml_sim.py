@@ -26,7 +26,7 @@ def report(folder, ml, ml_type, predictions):
     train_score = ml.score(train_features, train_labels)
 
     # report calculations
-    if not predictions:
+    if predictions is None:
         test_score = 0.0
         report = "N/A: All QPU inference jobs failed or returned errors."
         cm_text = "N/A: No valid data to display."
