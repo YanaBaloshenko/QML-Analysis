@@ -33,4 +33,4 @@ weighted avg       0.19      0.44      0.26        39
 Number of qubits: 6
 Number of Support Vectors: 0
 Model options:
-C=0.1ss
+C=0.1
