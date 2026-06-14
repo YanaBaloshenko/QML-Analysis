@@ -58,9 +58,9 @@ def vqc_def(n_features, bcknd, folder, file_name):
 
     sampler, backend = backend_def(bcknd)
     fm_reps = 1 # liczba powtórzeń dla mapy cech
-    ansatz_reps = 3 # liczba powtórzeń dla ansatzu
+    ansatz_reps = 1 # liczba powtórzeń dla ansatzu
 
-    optimizer = spsa = SPSA(maxiter=20, learning_rate=0.02, perturbation=0.1) # konfiguracja optymalizatora
+    optimizer = SPSA(maxiter=10, learning_rate=0.02, perturbation=0.1) # konfiguracja optymalizatora
     pm = generate_preset_pass_manager(optimization_level=2, target=backend.target) # preset do transpilacji
                                                                                    # opt_lvl: 0 - bez optymalizacji, 1 - lekka, 2 - ciężka, 3 - największa)
     feature_map = zz_feature_map(feature_dimension=n_features, reps=fm_reps, entanglement='linear') # mapa cech z liniowym splątaniem
@@ -112,3 +112,4 @@ def pegasos_def(n_features, bcknd, folder):
     qsvc = PegasosQSVC(quantum_kernel=qkernel, C=c, num_steps=ns) # definicja modelu
 
     return qsvc, sampler, options
+

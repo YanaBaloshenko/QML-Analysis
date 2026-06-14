@@ -66,7 +66,7 @@ def training(ml_type, bcknd, d_file):
     results_save(ml_type, ml, sampler, bcknd, options, folder, train_time, n_features, d_file, filename, test_features)
 
 def main():
-    bcknd = "sirius"
+    bcknd = "garnet"
     ml_type = "qsvc" # ["qsvc", "pegasos_qsvc"]
     d_n = 5
     d_size = 240

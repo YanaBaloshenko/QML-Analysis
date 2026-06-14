@@ -66,7 +66,7 @@ def qsvc_def(n_features, folder):
     os.makedirs(folder, exist_ok=True)
     
     feature_map = zz_feature_map(feature_dimension=n_features, reps=1)
-    qkernel = FidelityStatevectorKernel(feature_map=feature_map) # FidelityStatevectorKernel - symulowane jądro
+    qkernel = FidelityStatevectorKernel(feature_map=feature_map) # symulowane jądro
     
     c = 0.5
     options = [f"C={c}", "class_weight='balanced'"] # lista podanych do modelu opcji

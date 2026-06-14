@@ -100,7 +100,7 @@ def training(bcknd, d_file):
     results_save(ml, backend, sampler, bcknd, objective_func_vals, folder, train_time, n_features, d_file, filename, compiled_base_circuit, test_features)
 
 def main():
-    bcknd = "sirius"
+    bcknd = "garnet"
     d_n = 5
     d_size = 240
     d_file = f"kdd_3.14-scale_{d_n}-fpca_onehot-enc_{d_size}"
