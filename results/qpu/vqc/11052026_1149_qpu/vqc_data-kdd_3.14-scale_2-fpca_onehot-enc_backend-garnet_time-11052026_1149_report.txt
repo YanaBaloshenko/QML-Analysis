@@ -26,7 +26,48 @@ Actual Attack (1):        1         |        2
 
     accuracy                           0.50         4
    macro avg       0.33      0.33      0.33         4
-weighted avg       0.50      0.50      0.50         4
+weighted avg       0.50      0.50      0.50         4 
+
+--- Model parameters ---
+Number of qubits: 20
+Number of iterations: 5
+Number of Function Evaluations: 15
+Loss function type: CrossEntropyLoss
+Loss function value: 0.9615707785929561
+Initial point (starting weights): [-0.316263222274955, 0.18632896810481636, -1.6774197069730972, -1.2463017720081184]
+Weights: [-1.0588557027148933, -1.6571796853136225, -2.2175165403080856, -3.2236683020911827]
+Final Gradient Magnitude: 0
+Number of Jacobian Evaluations: 0
+
+--- Neural network ---
+Features sent to NN: 2
+Number of weights (dimensionality): 4
+Final probability shape: 2
+
+--- Optimizer (SPSA) settings ---
+maxiter: 5
+learning_rate: None
+perturbation: None
+trust_region: False
+blocking: False
+allowed_increase: None
+resamplings: 1
+perturbation_dims: None
+second_order: False
+hessian_delay: 0
+regularization: 0.01
+lse_solver: None
+initial_hessian: None
+callback: <function get_vqc_callback.<locals>.callback at 0x000001EA5C23EFC0>
+termination_checker: None
+
+--- Sampler info ---
+Default shots: 1024
+Total computational cost: 15360 shots
+
+
+
+
 
 
 --- Feature Importance ---
@@ -109,41 +150,4 @@ dst_host_srv_diff_host_rate 0.004789
               service_pop_3 0.000000   
                 service_ftp 0.000000   
              service_finger 0.000000   
-                    flag_S3 0.000000   
-
---- Model parameters ---
-Number of qubits: 20
-Number of iterations: 5
-Number of Function Evaluations: 15
-Loss function type: CrossEntropyLoss
-Loss function value: 0.9615707785929561
-Initial point (starting weights): [-0.316263222274955, 0.18632896810481636, -1.6774197069730972, -1.2463017720081184]
-Weights: [-1.0588557027148933, -1.6571796853136225, -2.2175165403080856, -3.2236683020911827]
-Final Gradient Magnitude: 0
-Number of Jacobian Evaluations: 0
-
---- Neural network ---
-Features sent to NN: 2
-Number of weights (dimensionality): 4
-Final probability shape: 2
-
---- Optimizer (SPSA) settings ---
-maxiter: 5
-learning_rate: None
-perturbation: None
-trust_region: False
-blocking: False
-allowed_increase: None
-resamplings: 1
-perturbation_dims: None
-second_order: False
-hessian_delay: 0
-regularization: 0.01
-lse_solver: None
-initial_hessian: None
-callback: <function get_vqc_callback.<locals>.callback at 0x000001EA5C23EFC0>
-termination_checker: None
-
---- Sampler info ---
-Default shots: 1024
-Total computational cost: 15360 shots
+                    flag_S3 0.000000
